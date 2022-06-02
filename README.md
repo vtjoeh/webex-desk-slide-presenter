@@ -1,5 +1,5 @@
 # webex-desk-slide-presenter
-A macro in PowerPoint and on the Webex Desk-series to control Immersive Share from the PowerPoint.  
+Overlay your video on a PowerPoint slide using the Webex Desk.  The PowerPoint uses a macro to control the Webex Desk-series Immersive Share feature.  
 
 ## Requirement for Webex Desk Slide Presenter:
 
