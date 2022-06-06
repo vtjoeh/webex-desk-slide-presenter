@@ -14,7 +14,6 @@ Step-by-step directions setup can be found in [Directions for WebexDeskSlidePres
 
 ## Video Tutorial and demo
 
-<a href="https://app.vidcast.io/share/a56eda21-4818-4dab-a2ff-9448277e7783" target="_blank">Webex Desk Slide Presenter: Basic Setup (video 1 of 2)</a>
 [Webex Desk Slide Presenter: Basic Setup (video 1 of 2)](https://app.vidcast.io/share/a56eda21-4818-4dab-a2ff-9448277e7783)
 
 [Webex Desk Slide Presenter: Advanced Features (video 2 of 2)](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
