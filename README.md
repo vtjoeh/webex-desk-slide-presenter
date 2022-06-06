@@ -18,5 +18,9 @@ Step-by-step directions setup can be found in [Directions for WebexDeskSlidePres
 
 [Webex Desk Slide Presenter: Advanced Features (video 2 of 2)](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
 
+## Does not work with the "webex-presenter-desk-pro" macro
+
+If you are using the "webex-presenter-desk-pro" macro on your Webex Desk, please disable it.  The two macros use the same APIs and will probably create issues. 
+
 
 
