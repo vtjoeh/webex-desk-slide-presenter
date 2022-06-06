@@ -20,7 +20,7 @@ Step-by-step directions setup can be found in [Directions for WebexDeskSlidePres
 
 ## Does not work with the "webex-presenter-desk-pro" macro
 
-If you are using the "webex-presenter-desk-pro" macro on your Webex Desk, please disable it.  The two macros use the same APIs and will probably create issues. 
+If you are using the "webex-presenter-desk-pro" macro that I wrote on your Webex Desk, please disable it.  The two macros use the same APIs and will probably create issues. 
 
 
 
