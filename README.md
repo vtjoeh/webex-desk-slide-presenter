@@ -12,5 +12,11 @@ Overlay your video on a PowerPoint slide using the Webex Desk.  The PowerPoint u
 
 Step-by-step directions setup can be found in [Directions for WebexDeskSlidePresenter.pdf](https://github.com/vtjoeh/webex-desk-slide-presenter/blob/main/Directions%20for%20WebexDeskSlidePresenter_ver_0.1.3.pdf)
 
+## Video Tutorial and demo
+
+[Webex Desk Slide Presenter: Basic Setup (video 1 of 2)](https://app.vidcast.io/share/a56eda21-4818-4dab-a2ff-9448277e7783)
+
+[Webex Desk Slide Presenter: Advanced Features (video 2 of 2)](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
+
 
 
