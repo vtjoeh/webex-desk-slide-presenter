@@ -1,21 +1,90 @@
 ' This VB macro is found in the PowerPoint TemplateDeskProMacro_ver0.1.x.pptm, but wanted to include a copy here.  
 ' I recommend using TemplateDeskProMacro_ver0.1.x.pptm to start with instead of the below Macro
 
+' Webex Desk Slide Presenter VBA macro ver 0.1.5.2
+' Author: joehughe at cisco dot com
+' https://github.com/vtjoeh/webex-desk-slide-presenter
 
-Private Sub sendCommand(position As String)
-    Dim curlString, userame, password, ipaddress, body As String
+Private Sub SendCommand(command As String)
+    Dim curlString, username, password, ipaddress, body, lastCommand As String
     
-    ' Change the following three values to match your Webex Desk Pro
-    username = "pptMacro"
-    password = ""
-    ipaddress = "192.168.x.x"
+    lastCommand = GetTag("LASTCOMMAND")
+
+    If Not (lastCommand = command) Then
+        username = GetShapeTextValue("setting_user")
+        password = GetShapeTextValue("setting_pwd")
+        ipaddress = GetShapeTextValue("setting_ip")
     
+        body = "<Command><UserInterface><Message><TextInput><Response><FeedbackId>pptVideoSquare</FeedbackId><Text>" + command + "</Text></Response></TextInput></Message></UserInterface></Command>"
+        curlString = "curl -k -u """ + username + ":" + password + """ -d """ + body + """ https://" + ipaddress + "/putxml"
+        Debug.Print (GetTime + " Command: " + command)
+        StoreTag "LASTCOMMAND", (command)
+        Shell (curlString)
+    End If
+End Sub
+
+Private Sub MakePasswordTransparent()
+    Dim i As Integer
+    Dim currentSlide As Slide
+    Dim shp As Shape
+    Dim done As Boolean
     
-    body = "<Command><UserInterface><Message><TextInput><Response><FeedbackId>pptVideoSquare</FeedbackId><Text>" + position + "</Text></Response></TextInput></Message></UserInterface></Command>"
-    curlString = "curl -k -u """ + username + ":" + password + """ -d """ + body + """ https://" + ipaddress + "/putxml"
-    SetLastCommand (position)
-    Shell (curlString)
+    done = False
     
+    For i = 1 To ActivePresentation.Slides.Count
+        Set currentSlide = ActivePresentation.Slides(i)
+        For Each shp In currentSlide.Shapes
+        
+            If shp.Name Like "setting_pwd" Then
+                shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
+                Exit For
+            End If
+         Next
+         If done Then Exit For
+    Next
+End Sub
+
+Private Function GetShapeTextValue(shapeName As String) As String
+    Dim i As Integer
+    Dim passwordVisible As String
+    Dim currentSlide As Slide
+    Dim shp As Shape
+    Dim done As Boolean
+    
+    GetShapeTextValue = "not found"
+    done = False
+    
+    For i = 1 To ActivePresentation.Slides.Count
+        Set currentSlide = ActivePresentation.Slides(i)
+        For Each shp In currentSlide.Shapes
+            If shp.Name Like "setting_pwd" And GetTag("PASSWORDVISIBLE") Like "false" Then
+                shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
+            End If
+            
+            If LCase(shp.Name) Like shapeName Then
+                GetShapeTextValue = Trim(ActivePresentation.Slides(i).Shapes(shapeName).TextFrame.TextRange.text)
+                done = True
+                Exit For
+            End If
+         Next
+         If done Then Exit For
+    Next
+End Function
+
+Public Sub ToggleSelfviewOn()
+    SendCommand ("pptImmersiveSelfviewToggle")
+    OnSlideShowPageChange
+End Sub
+
+Public Sub MakePasswordVisible()
+   ' Toggle the visibility of the password on or off
+    If ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 0# Then
+        ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 1#
+        StoreTag "PASSWORDVISIBLE", ("false")
+    Else
+        ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 0#
+        StoreTag "PASSWORDVISIBLE", ("true")
+    End If
 End Sub
 
 Sub OnSlideShowPageChange()
@@ -25,134 +94,205 @@ Sub OnSlideShowPageChange()
         shownSlide = ActivePresentation.SlideShowWindow.View.CurrentShowPosition
         LoopThroughShapes (shownSlide)
     End If
-    
-    Debug.Print "The Time:"
-    Debug.Print GetTime
-    
 End Sub
 
 Sub OnSlideShowTerminate()
-     sendCommand ("pptImmersiveSlideShowEnd")
-     SetLastCommand ("SlideShowEnd")
+    Dim command As String
+    
+    command = GetShapeTextValue("setting_default_slide_show_end")
+    command = LCase(command)
+    command = Replace(command, " ", "")
+    
+    If command Like "showpc*" Then
+        command = "pptImmersiveSlideShowEnd"
+    ElseIf command = "stopcontentshare" Then
+        command = "pptImmersiveStopContentShare"
+    Else
+        command = "pptImmersiveStopContentShare"
+    End If
+    
+    SendCommand (command)
+    StoreTag "LASTCOMMAND", ("SlideShowEnd")
+    StoreTag "PASSWORDVISIBLE", ("false")
 End Sub
 
 Private Sub LoopThroughShapes(slideNumber)
     Dim currentSlide As Slide
     Dim shp As Shape
+    Dim strEqual, shpName, defaultNoCommand As String
     Dim shapeFound As Boolean
     
     shapeFound = False
-
-    Set currentSlide = ActivePresentation.SlideShowWindow.View.Slide
-
-      For Each shp In currentSlide.Shapes
-          If LCase(shp.Name) Like "videosquare*" Then
-             GetShapeDetails shp
-             shapeFound = True
-             Exit For
-          End If
-          
-          If LCase(shp.Name) Like "cameraonly" Then
-            sendCommand ("pptImmersiveCameraOnly")
+    Set currentSlide = ActivePresentation.Slides(slideNumber)
+     
+    For Each shp In currentSlide.Shapes
+        shpName = LCase(shp.Name)
+        If shpName Like "videosquare*" Or shpName Like "videoshape*" Then
+            GetShapeDetails shp
             shapeFound = True
             Exit For
-          End If
-      Next shp
-      
-      If shapeFound = False Then
-        If Not GetLastCommand() = "pptImmersiveShareOff" Then
-            sendCommand ("pptImmersiveShareOff")
         End If
-      End If
+        
+        If shpName Like "stopcontentshare" Then
+            SendCommand ("pptImmersiveStopContentShare")
+            StoreTag "LASTCOMMAND", ("SlideShowEnd")
+            shapeFound = True
+            Exit For
+        End If
+        
+        If shpName Like "novideo" Then
+            SendCommandNoVideo
+            shapeFound = True
+            Exit For
+        End If
+        
+        If shpName Like "cameraonly" Then
+            SendCommand ("pptImmersiveCameraOnly")
+            shapeFound = True
+            Exit For
+        End If
+        
+        If shpName Like "sidebyside*" Then
+            strEqual = Replace(shpName, "sidebyside", "")
+            strEqual = Replace(strEqual, "x", "0")
+            SendCommand ("pptImmersiveEqual" + strEqual)
+            shapeFound = True
+            Exit For
+        End If
+          
+        If shpName Like "prominent" Then
+            SendCommand ("pptImmersiveProminent")
+            shapeFound = True
+            Exit For
+        End If
+        
+        If shpName Like "stopimmersiveshare" Then
+            SendCommand ("pptImmersiveShareOff")
+            shapeFound = True
+            Exit For
+        End If
+
+        If shpName Like "previous*" Then
+            shapeFound = True
+            PreviousSlideCommand (CLng(slideNumber))
+            Exit For
+        End If
+         
+        If shpName Like "speakertrackdiagnostic" Then
+            SendCommand ("pptImmersiveSpeakerTrackDiag")
+            shapeFound = True
+            Exit For
+        End If
+    Next shp
+    
+    ' If a command shape is not found determine default action
+    If shapeFound = False Then
+       GetDefaultSlideCommand (slideNumber)
+    End If
 End Sub
 
+Private Sub SendCommandNoVideo()
+    SendCommand ("X:200,Y:200,Scale:1,Opacity:1,Composition:Blend")
+End Sub
 
+Private Sub GetDefaultSlideCommand(slideNumber)
+    Dim command As String
+    command = GetShapeTextValue("setting_default_no_command")
+   
+    ' First parse the command so it is either a number, 'previous' or 'default'.
+    command = Replace(command, " ", "") ' remove all spaces
+    command = LCase(command)
+    command = Replace(command, "slide", "")
+    command = Replace(command, "number", "")
+   ' Make sure the value is valid.  If not change to 'default'
+    If IsNumeric(command) = True Then
+        If Not (CLng(command) <= ActivePresentation.Slides.Count And CLng(command) > 0) Then
+            command = "default"
+        End If
+    ElseIf Not (command Like "novideo" Or command Like "previous" Or command Like "novideo" Or command Like "stopimmersiveshare") Then
+        command = "default"
+    End If
+ 
+    If command Like "novideo" Or command = "default" Then
+        SendCommandNoVideo
+    ElseIf command Like "stopimmersiveshare" Then
+        SendCommand ("pptImmersiveShareOff")
+    ElseIf IsNumeric(command) Then
+        ' do something with the slide designated as the default slide.
+        LoopThroughShapes (CLng(command))
+    ElseIf command Like "previous" Then ' do something uses the command from the previous slide.
+        PreviousSlideCommand (slideNumber)
+    End If
+End Sub
 
+Private Sub PreviousSlideCommand(slideNumber As Long)
+        If slideNumber > 1 Then
+            slideNumber = slideNumber - 1
+            LoopThroughShapes (slideNumber)
+        Else  ' If there is no previous command, turn off immersive share
+            SendCommand ("pptImmersiveShareOff")
+        End If
+End Sub
 
 Private Sub GetShapeDetails(shp As Shape)
-     Dim shapeDetails, pythonPath, Composition, lastShapeDetails As String
-     Dim shpX, shpY, shpScale, shpOpacity, tempOpacity, slideWidth, slideHeight As Integer
-     Dim arrSplitString() As String
-     Dim Item As Variant
-     
-     Composition = "Blend"
-     shpOpacity = 100
-     
-     arrSplitString = Split(LCase(shp.Name), "_")
-     
-      For Each Item In arrSplitString
-            Debug.Print ("****** Item: " + Item)
-            
-            If Item = "blend" Then
-                Composition = "Blend"
-            ElseIf Item = "pip" Then
-                Composition = "CameraPip"
-            ElseIf Item = "camerapip" Then
-                Composition = "CameraPip"
-            ElseIf Item = "videopip" Then
-                Composition = "VideoPip"
-            ElseIf Item = "flippip" Then
-              Composition = "VideoPip"
-            ElseIf IsNumeric(Item) Then
-                tempOpacity = CInt(Item)
-                If tempOpacity >= 0 And tempOpacity <= 100 Then
-                    shpOpacity = Item
-                End If
-            Else
-               ' Composition = "Blend"
-            End If
-            
-      Next Item
-     
-      
-      
-        
-      slideWidth = CDbl(ActivePresentation.PageSetup.slideWidth)
-      slideHeight = CDbl(ActivePresentation.PageSetup.slideHeight)
+    Dim shapeDetails, pythonPath, Composition, lastShapeDetails As String
+    Dim shpX, shpY, shpScale, shpOpacity, tempOpacity, slideWidth, slideHeight As Integer
+    Dim arrSplitString() As String
+    Dim Item As Variant
     
-      shpX = CInt((shp.Left + shp.Width / 2) * 10000 / slideWidth)
+    Composition = "Blend"
+    shpOpacity = 100
+    
+    arrSplitString = Split(LCase(shp.Name), "_")
      
-      shpY = CInt((shp.Top + shp.Height / 2) * 10000 / slideHeight)
-     
-      shpScale = CInt(100 * ((shp.Height / slideHeight) + (shp.Width / slideWidth)) / 2)
-         
-     ' Debug.Print ("Raw: X:" + shp.Left + ",Y:" + shp.Top)
-     
-     shapeDetails = "X:" + Trim(Str(shpX)) + ",Y:" + Trim(Str(shpY)) + ",Scale:" + Trim(Str(shpScale)) + ",Opacity:" + Trim(Str(shpOpacity)) + ",Composition:" + Trim(Composition)
-     
-     Debug.Print (shapeDetails)
-     lastShapeDetails = GetLastCommand()
-     If Not (lastShapeDetails = shapeDetails) Then
-         lastShapeDetails = shapeDetails
-         sendCommand (shapeDetails)
-     End If
-     Debug.Print (GetTime)
+    For Each Item In arrSplitString
+        If Item = "blend" Then
+            Composition = "Blend"
+        ElseIf Item = "pip" Then
+            Composition = "CameraPip"
+        ElseIf Item = "camerapip" Then
+            Composition = "CameraPip"
+        ElseIf Item = "videopip" Then
+            Composition = "VideoPip"
+        ElseIf Item = "flippip" Then
+            Composition = "VideoPip"
+        ElseIf IsNumeric(Item) Then
+            tempOpacity = CInt(Item)
+            If tempOpacity >= 0 And tempOpacity <= 100 Then
+                shpOpacity = Item
+            End If
+        End If
+    Next Item
+
+    slideWidth = CDbl(ActivePresentation.PageSetup.slideWidth)
+    slideHeight = CDbl(ActivePresentation.PageSetup.slideHeight)
+    shpX = CInt((shp.Left + shp.Width / 2) * 10000 / slideWidth)
+    shpY = CInt((shp.Top + shp.Height / 2) * 10000 / slideHeight)
+    shpScale = CInt(100 * ((shp.Height / slideHeight) + (shp.Width / slideWidth)) / 2)
+    shapeDetails = "X:" + Trim(Str(shpX)) + ",Y:" + Trim(Str(shpY)) + ",Scale:" + Trim(Str(shpScale)) + ",Opacity:" + Trim(Str(shpOpacity)) + ",Composition:" + Trim(Composition)
+    lastShapeDetails = GetTag("LASTCOMMAND")
+    
+    SendCommand (shapeDetails)
 End Sub
 
+' Used when troubleshotting timing
 Private Function GetTime() As String
     GetTime = Format(Now(), "yyyy-MM-dd hh:mm:ss")
 End Function
 
-Private Sub SetLastCommand(command As String)
+Private Sub StoreTag(tagName As String, tagValue As String)
     With Application.ActivePresentation.Tags
-        .Add "LASTCOMMAND", command
+        .Add tagName, tagValue
     End With
 End Sub
 
-Private Function GetLastCommand() As String
-        GetLastCommand = "none"
-        With Application.ActivePresentation.Tags
-                For i = 1 To .Count
-                    Debug.Print ("tags: " + .Name(i) + ": " + .Value(i))
-                    If .Name(i) = "LASTCOMMAND" Then
-                        GetLastCommand = .Value(i)
-                    End If
-                Next
-            End With
+Private Function GetTag(tagName As String) As String
+    GetTag = tagName + " not found"
+    With Application.ActivePresentation.Tags
+        For i = 1 To .Count
+            If .Name(i) = tagName Then
+                GetTag = .Value(i)
+            End If
+        Next
+    End With
 End Function
-
-Private Sub App_SlideShowBegin(ByVal Wn As SlideShowWindow)
-
-   MsgBox ("Test")
-
-End Sub
