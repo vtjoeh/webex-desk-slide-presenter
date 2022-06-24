@@ -59,7 +59,7 @@ If you are using the "webex-presenter-desk-pro" macro that I wrote on your Webex
 
 
 ### ver 0.1.4 
-Internal only.  Changes listed above in 0.1.4  
+Internal only.  Changes listed above in 0.1.5  
 
 ### ver 0.1.3 
 First release
