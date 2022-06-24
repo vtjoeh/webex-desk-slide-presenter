@@ -23,4 +23,35 @@ Step-by-step directions setup can be found in [Directions for WebexDeskSlidePres
 If you are using the "webex-presenter-desk-pro" macro that I wrote on your Webex Desk, please disable it.  The two macros use the same APIs and will probably create issues. 
 
 
+# Release Notes
 
+### ver 0.1.5.2 
+
+### ver 0.1.5.1
+
+- Added cover slide from Dirk-Jan Uittenbogaard.
+- Slide can be in any order (no longer needs to be the first slide). 
+- Username, Password and IP Address are now stored in a slide.  
+  - Password in slide 1 automatically becomes transparent at start of macro.  
+  - Password transparency can be toggled in presentation by clicking on the eye icon 
+
+New Commands:
+- StopImmersiveShare
+
+- SpeakerTrackDiagnostic
+
+- SideBySide
+
+- SideBySide_[123x]_u
+
+- Prominent
+
+- StopContentShare
+
+
+
+### ver 0.1.4 
+Internal only.  Changes listed above in 0.1.4  
+
+### ver 0.1.3 
+First release
