@@ -1,7 +1,7 @@
 ' This VB macro is found in the PowerPoint TemplateDeskProMacro_ver0.1.x.pptm, but wanted to include a copy here.  
 ' I recommend using TemplateDeskProMacro_ver0.1.x.pptm to start with instead of the below Macro
 
-' Webex Desk Slide Presenter VBA macro ver 0.1.5.2
+' Webex Desk Slide Presenter VBA macro ver 0.1.5.3
 ' Author: joehughe at cisco dot com
 ' https://github.com/vtjoeh/webex-desk-slide-presenter
 
@@ -35,7 +35,7 @@ Private Sub MakePasswordTransparent()
         Set currentSlide = ActivePresentation.Slides(i)
         For Each shp In currentSlide.Shapes
         
-            If shp.Name Like "setting_pwd" Then
+            If shp.Name = "setting_pwd" Then
                 shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
                 Exit For
             End If
@@ -57,11 +57,11 @@ Private Function GetShapeTextValue(shapeName As String) As String
     For i = 1 To ActivePresentation.Slides.Count
         Set currentSlide = ActivePresentation.Slides(i)
         For Each shp In currentSlide.Shapes
-            If shp.Name Like "setting_pwd" And GetTag("PASSWORDVISIBLE") Like "false" Then
+            If shp.Name = "setting_pwd" And GetTag("PASSWORDVISIBLE") = "false" Then
                 shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
             End If
             
-            If LCase(shp.Name) Like shapeName Then
+            If LCase(shp.Name) = shapeName Then
                 GetShapeTextValue = Trim(ActivePresentation.Slides(i).Shapes(shapeName).TextFrame.TextRange.text)
                 done = True
                 Exit For
@@ -107,11 +107,14 @@ Sub OnSlideShowTerminate()
         command = "pptImmersiveSlideShowEnd"
     ElseIf command = "stopcontentshare" Then
         command = "pptImmersiveStopContentShare"
-    Else
+    ElseIf Not (command Like "nothing") Then
         command = "pptImmersiveStopContentShare"
     End If
     
-    SendCommand (command)
+    If Not (command = "nothing") Then
+            SendCommand (command)
+    End If
+    
     StoreTag "LASTCOMMAND", ("SlideShowEnd")
     StoreTag "PASSWORDVISIBLE", ("false")
 End Sub
@@ -131,54 +134,38 @@ Private Sub LoopThroughShapes(slideNumber)
             GetShapeDetails shp
             shapeFound = True
             Exit For
-        End If
-        
-        If shpName Like "stopcontentshare" Then
+        ElseIf shpName = "stopcontentshare" Then
             SendCommand ("pptImmersiveStopContentShare")
             StoreTag "LASTCOMMAND", ("SlideShowEnd")
             shapeFound = True
             Exit For
-        End If
-        
-        If shpName Like "novideo" Then
+        ElseIf shpName = "novideo" Then
             SendCommandNoVideo
             shapeFound = True
             Exit For
-        End If
-        
-        If shpName Like "cameraonly" Then
+        ElseIf shpName = "cameraonly" Then
             SendCommand ("pptImmersiveCameraOnly")
             shapeFound = True
             Exit For
-        End If
-        
-        If shpName Like "sidebyside*" Then
+        ElseIf shpName Like "sidebyside*" Then
             strEqual = Replace(shpName, "sidebyside", "")
             strEqual = Replace(strEqual, "x", "0")
             SendCommand ("pptImmersiveEqual" + strEqual)
             shapeFound = True
             Exit For
-        End If
-          
-        If shpName Like "prominent" Then
+        ElseIf shpName = "prominent" Then
             SendCommand ("pptImmersiveProminent")
             shapeFound = True
             Exit For
-        End If
-        
-        If shpName Like "stopimmersiveshare" Then
+        ElseIf shpName = "stopimmersiveshare" Then
             SendCommand ("pptImmersiveShareOff")
             shapeFound = True
             Exit For
-        End If
-
-        If shpName Like "previous*" Then
+        ElseIf shpName Like "previous*" Then
             shapeFound = True
             PreviousSlideCommand (CLng(slideNumber))
             Exit For
-        End If
-         
-        If shpName Like "speakertrackdiagnostic" Then
+        ElseIf shpName = "speakertrackdiagnostic" Then
             SendCommand ("pptImmersiveSpeakerTrackDiag")
             shapeFound = True
             Exit For
@@ -209,18 +196,18 @@ Private Sub GetDefaultSlideCommand(slideNumber)
         If Not (CLng(command) <= ActivePresentation.Slides.Count And CLng(command) > 0) Then
             command = "default"
         End If
-    ElseIf Not (command Like "novideo" Or command Like "previous" Or command Like "novideo" Or command Like "stopimmersiveshare") Then
+    ElseIf Not (command = "novideo" Or command = "previous" Or command = "novideo" Or command = "stopimmersiveshare") Then
         command = "default"
     End If
  
-    If command Like "novideo" Or command = "default" Then
+    If command = "novideo" Or command = "default" Then
         SendCommandNoVideo
-    ElseIf command Like "stopimmersiveshare" Then
+    ElseIf command = "stopimmersiveshare" Then
         SendCommand ("pptImmersiveShareOff")
     ElseIf IsNumeric(command) Then
         ' do something with the slide designated as the default slide.
         LoopThroughShapes (CLng(command))
-    ElseIf command Like "previous" Then ' do something uses the command from the previous slide.
+    ElseIf command = "previous" Then '  uses the command from the previous slide.
         PreviousSlideCommand (slideNumber)
     End If
 End Sub
@@ -275,7 +262,6 @@ Private Sub GetShapeDetails(shp As Shape)
     SendCommand (shapeDetails)
 End Sub
 
-' Used when troubleshotting timing
 Private Function GetTime() As String
     GetTime = Format(Now(), "yyyy-MM-dd hh:mm:ss")
 End Function
