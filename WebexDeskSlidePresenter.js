@@ -1,5 +1,5 @@
 /*
-WebexDeskSlidePresenter.js ver 0.1.5.2 for the Webex Desk Pro, Desk and Desk Mini
+WebexDeskSlidePresenter.js ver 0.1.5.3 for the Webex Desk Pro, Desk and Desk Mini
 
 Purpose: Use PowerPoint and Webex Desk Immersive Share to superimpose your image at a predefined location in a PowerPoint slide.  
 This macro requires the PowerPoint run a VB macro that communicates with the endpoint.    
@@ -101,35 +101,49 @@ function selectDefaultBackground() {
       console.error('error on xapi.Command.Cameras.Background.Set({ Mode: defaultBackground.Mode, Image: defaultBackground.Image }), trying again as xapi.Command.Cameras.Background.Set({ Mode: defaultBackground.Mode })');
     });
   }
-  consoleState(); 
+  consoleState();
 }
 
-function turnSpeakerTrackDiagOff(){
+function turnSpeakerTrackDiagOff() {
+  logFuncName("turnSpeakerTrackDiagOff() state.speakerTrackDiag: " + state.speakerTrackDiag)
   if (state.speakerTrackDiag !== 'Off') {
     state.speakerTrackDiag = 'Off';
     xapi.Command.Cameras.SpeakerTrack.Diagnostics.Stop();
   }
-  consoleState(); 
+  consoleState();
 }
 
 function resetToDefault() {
-  logFuncName("resetToDefault")
   // Turn off Immersive Share and go back to default
-  selectDefaultBackground();
-  xapi.Command.Video.Input.MainVideo.Unmute();
-  state.slideImmersiveShare = "Off";
-  turnSpeakerTrackDiagOff(); 
-  xapi.Command.Presentation.Stop().then(() => {
-    // Do any clean up if active calls is 0 or 1 
-    selectDefaultBackground();
-  })
-  consoleState(); 
+  logFuncName('resetToDefault')
+  state.slideImmersiveShare = 'Off';
+      xapi.Status.SystemUnit.State.NumberOfActiveCalls.get().then(activeCalls => {
+        logFuncName('resetToDefault()->xapi.Status.SystemUnit.State.NumberOfActiveCalls.get(): ' + activeCalls); 
+        if (activeCalls == 0) {
+          setTimeout(()=>{  
+            // selfviewOff();
+            xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
+            xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off', Mode: 'Off' }); 
+            xapi.Command.Video.Input.MainVideo.Unmute(); 
+            selectDefaultBackground();
+          }, 250)  // add some delay to keep fullscreen selfview from flashing on screen
+        } else {
+          xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off' }); 
+          xapi.Command.Video.Input.MainVideo.Unmute(); 
+          xapi.Command.Presentation.Stop().then(() => {
+            // Do any clean up 
+            xapi.Command.Video.Input.MainVideo.Unmute();
+            selectDefaultBackground();
+          })
+        }
+      })
+  consoleState();
 }
 
 function virtualBackground(foreground, mode = state.backgroundModePc) {
   logFuncName("virtualBackground")
   turnSpeakerTrackDiagOff();
-  xapi.Command.Video.Input.MainVideo.Mute(); 
+  xapi.Command.Video.Input.MainVideo.Mute();
   if (state.slideImmersiveShare === 'Off') {
     // Adding some delay bfore making the switch 
     setTimeout(() => {
@@ -137,7 +151,6 @@ function virtualBackground(foreground, mode = state.backgroundModePc) {
       xapi.Command.Cameras.Background.ForegroundParameters.Set(foreground);
       xapi.Command.Presentation.Start({ ConnectorId: mainCam });
     }, 2050)
-    // }, 200)
   }
   else {
     xapi.Command.Cameras.Background.Set({ Mode: mode });
@@ -150,11 +163,11 @@ function virtualBackground(foreground, mode = state.backgroundModePc) {
 
 function virtualLocalCameraBackground(foreground, mode = state.backgroundModePc) {
   logFuncName('virtualLocalCameraBackground')
-  turnSpeakerTrackDiagOff(); 
+  turnSpeakerTrackDiagOff();
   xapi.Command.Cameras.Background.Set({ Mode: mode });
   xapi.Command.Cameras.Background.ForegroundParameters.Set(foreground);
   state.slideImmersiveShare = 'On';
-  consoleState(); 
+  consoleState();
 }
 
 // Convert the string to an object and send command. For example -  X:8084,Y:0,Scale:20,Opacity:100,Composition:Blend to object {"X":"8084","Y":"0","Scale":"20","Opacity":"100","Composition":"Blend"}
@@ -167,54 +180,55 @@ function parseCommand(string) {
   for (let i in partsArray) {
     let keyValue = partsArray[i].split(':');
     keyValueArray.push(' "' + keyValue[0] + '" : "' + keyValue[1] + '"')
-  }
+  } 
   locationObj = JSON.parse('{' + keyValueArray.join(',') + ' }');
+  
   return locationObj;
 }
 
-function replaceElementinArray(arr, findItem, replaceItem){
-  arr.forEach((element, index)=>{
-    if (element === findItem){
-      arr[index] = replaceItem; 
+function replaceElementinArray(arr, findItem, replaceItem) {
+  arr.forEach((element, index) => {
+    if (element === findItem) {
+      arr[index] = replaceItem;
     }
-  }); 
-  return arr; 
+  });
+  return arr;
 }
 
-function presentationEqual(text){
-   
-      let presentationSource = [state.contentId, mainCam]; // set default values
-      let mute = true; 
-      selectDefaultBackground();
-      text = text.toLowerCase(); 
-      const regex = /pptimmersive?equal_?([0123]{1,3})?_?([mu])?/;
-      const match = text.match(regex);
+function presentationEqual(text) {
+  logFuncName("presentationEqual() text: " + text)
+  let presentationSource = [state.contentId, mainCam]; // set default values
+  let mute = true;
+  selectDefaultBackground();
+  text = text.toLowerCase();
+  const regex = /pptimmersive?equal_?([0123]{1,3})?_?([mu])?/;
+  const match = text.match(regex);
 
-      state.slideImmersiveShare = 'On'; 
+  state.slideImmersiveShare = 'On';
 
-      if (match[1] !== undefined){
-        presentationSource = match[1].split(''); 
-        presentationSource = replaceElementinArray(presentationSource, '0', state.contentId); // replace 0 with the state.contentId so the last active HDMI/USBC signal is shared
-      }
+  if (match[1] !== undefined) {
+    presentationSource = match[1].split('');
+    presentationSource = replaceElementinArray(presentationSource, '0', state.contentId); // replace 0 with the state.contentId so the last active HDMI/USBC signal is shared
+  }
 
-      if(match[2] === 'u'){
-        mute = false 
-      } 
-      
-      if (mute === true){
-        xapi.Command.Video.Input.MainVideo.Mute();
-      } else {
-        xapi.Command.Video.Input.MainVideo.Unmute(); 
-      }
-      
-      xapi.Command.Presentation.Start({ PresentationSource: presentationSource, Layout: 'Equal' });
-      consoleState(); 
+  if (match[2] === 'u') {
+    mute = false
+  }
+
+  if (mute === true) {
+    xapi.Command.Video.Input.MainVideo.Mute();
+  } else {
+    xapi.Command.Video.Input.MainVideo.Unmute();
+  }
+
+  xapi.Command.Presentation.Start({ PresentationSource: presentationSource, Layout: 'Equal' });
+  consoleState();
 
 }
 
 function powerPointCommand(pptCmd) {
   logFuncName('powerPointCommand()' + JSON.stringify(pptCmd) + "  ");
-  
+
   state.lastCommand = pptCmd.Text
   // Only accept a command if a presenation is already being sent while in a call
   if ((pptCmd.FeedbackId === 'pptVideoSquare' && state.presentationMode === 'Sending') || pptCmd.FeedbackId === 'pptVideoSquare2') {
@@ -233,39 +247,39 @@ function powerPointCommand(pptCmd) {
           }
         }, 100)
       }); // add a little delay for a smoother transition
-      consoleState(); 
-    } 
+      consoleState();
+    }
     else if (pptCmd.Text === 'pptImmersiveCameraOnly') {
       selectDefaultBackground();
       let location = { X: '5000', Y: '5000', Scale: '100', Opacity: '100', Composition: 'VideoPip' };
       virtualBackground(location, defaultBackground);
     }
-    else if (pptCmd.Text === 'pptImmersiveStopContentShare'){
-      resetToDefault(); 
+    else if (pptCmd.Text === 'pptImmersiveStopContentShare') {
+      resetToDefault();
     }
-    else if (pptCmd.Text.includes('pptImmersiveEqual')) {   
+    else if (pptCmd.Text.includes('pptImmersiveEqual')) {
       presentationEqual(pptCmd.Text)
     }
     else if (pptCmd.Text === 'pptImmersiveProminent') {
       selectDefaultBackground();
       xapi.Command.Video.Input.MainVideo.Mute();
       xapi.Command.Presentation.Start({ PresentationSource: [state.contentId, mainCam], Layout: 'Prominent' });
-      state.slideImmersiveShare = 'On'; 
-      consoleState(); 
+      state.slideImmersiveShare = 'On';
+      consoleState();
     }
     else if (pptCmd.Text === 'pptImmersiveSpeakerTrackDiag') {
       state.speakerTrackDiag = 'On';
-      state.slideImmersiveShare = 'On'; 
+      state.slideImmersiveShare = 'On';
       xapi.Command.Cameras.SpeakerTrack.Diagnostics.Start();
       xapi.Command.Video.Input.MainVideo.Mute();
       xapi.Command.Presentation.Start({ ConnectorId: mainCam });
       consoleState();
     }
-    else if (pptCmd.Text === 'pptImmersiveSelfviewToggle'){
-      noSelfviewToggle(); 
+    else if (pptCmd.Text === 'pptImmersiveSelfviewToggle') {
+      noSelfviewToggle();
     }
-    else if (pptCmd.Text === 'pptImmersiveNoVideo'){
-      noVideo(); 
+    else if (pptCmd.Text === 'pptImmersiveNoVideo') {
+      noVideo();
     }
     else {
       virtualBackground(parseCommand(pptCmd.Text));
@@ -281,17 +295,14 @@ function powerPointCommand(pptCmd) {
   // NO CALL -  how to handle the commands in situations like vidcast
   else if (pptCmd.FeedbackId === 'pptVideoSquare' && state.activeCalls == '0') {  // This will show the Camera only 
     // This will show the Camera only 
-    if ( pptCmd.Text.includes('pptImmersiveEqual') || pptCmd.Text === 'pptImmersiveProminent' || pptCmd.Text === 'pptImmersiveNoVideo' || pptCmd.Text === 'pptImmersiveShareOff') {
+    if (pptCmd.Text.includes('pptImmersiveEqual') || pptCmd.Text === 'pptImmersiveProminent' || pptCmd.Text === 'pptImmersiveNoVideo' || pptCmd.Text === 'pptImmersiveShareOff') {
       let location = { X: '5000', Y: '5000', Scale: '100', Opacity: '100', Composition: 'VideoPip' }
-      turnSpeakerTrackDiagOff(); 
+      turnSpeakerTrackDiagOff();
       virtualLocalCameraBackground(location);
-      selfviewOff();    
-    } else if (pptCmd.Text === 'pptImmersiveSlideShowEnd' || pptCmd.Text === 'pptImmersiveStopContentShare' ) {  // This will show the Camera only 
       selfviewOff();
-      resetToDefault(); 
-      setTimeout(()=>{
-        xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
-      }, 100)
+    } else if (pptCmd.Text === 'pptImmersiveSlideShowEnd' || pptCmd.Text === 'pptImmersiveStopContentShare') {  // This will show the Camera only 
+      selfviewOff();
+      resetToDefault();
     }
     else if (pptCmd.Text === 'pptImmersiveCameraOnly') {
       selectDefaultBackground();
@@ -305,10 +316,10 @@ function powerPointCommand(pptCmd) {
       if (vidcastSelfview.mode === 'On') {
         selfviewOn(vidcastSelfview)
       };
-      consoleState(); 
+      consoleState();
     }
-    else if (pptCmd.Text.startsWith('pptImmersiveSelfviewToggle')){
-      toggleSelfView(); 
+    else if (pptCmd.Text.startsWith('pptImmersiveSelfviewToggle')) {
+      toggleSelfView();
     }
     else {
       let theCommand = parseCommand(pptCmd.Text)
@@ -318,53 +329,50 @@ function powerPointCommand(pptCmd) {
       };
     }
   }
-  // else {
-  //   // Do Nothing 
-  // }
 }
 
-
-function noVideo(){
-    presentationEqual('pptimmersiveequal_' + state.contentId)
+function noVideo() {
+  logFuncName('noVideo()');
+  presentationEqual('pptimmersiveequal_' + state.contentId)
 }
 
-function noSelfviewToggle(){
-    screenMessage("No selfview in call with immersive share on.", 5, 8200, 1300)
-} 
+function noSelfviewToggle() {
+  logFuncName("noSelfviewToggle()")
+  screenMessage("No selfview in call with immersive share on.", 5, 8200, 1300)
+}
 
-
-
-function toggleSelfView(){
-    xapi.Status.Video.Selfview.Mode.get().then(selfview =>{
-      if(selfview === 'On'){
-          vidcastSelfview.mode = 'Off'
-          selfviewOff(); 
-      } else {
-        vidcastSelfview.mode = 'On'
-        selfviewOn(vidcastSelfview); 
-      }
-    })
-  consoleState(); 
+function toggleSelfView() {
+  logFuncName("toggleSelfView()")
+  xapi.Status.Video.Selfview.Mode.get().then(selfview => {
+    if (selfview === 'On') {
+      vidcastSelfview.mode = 'Off'
+      selfviewOff();
+    } else {
+      vidcastSelfview.mode = 'On'
+      selfviewOn(vidcastSelfview);
+    }
+  })
+  consoleState();
 }
 
 function selfviewOn(sv) {
-  logFuncName('selfviewOn' + JSON.stringify(sv)); 
+  logFuncName('selfviewOn' + JSON.stringify(sv));
   xapi.Command.Video.Selfview.Set(
     {
       FullscreenMode: sv.fullScreenMode,
       Mode: sv.mode,
       PIPPosition: sv.pipPosition
     });
-  consoleState(); 
+  consoleState();
 }
 
 function selfviewOff() {
   xapi.Command.Video.Selfview.Set(
     { Mode: 'Off' });
-  consoleState(); 
+  consoleState();
 }
 
-function updateVideoMute(videoMuteOnOff) {
+function updateVideoMuteState(videoMuteOnOff) {
   logFuncName('updateVideoMute');
   if (videoMuteOnOff === "On" && state.videoMute === "Off" && state.slideImmersiveShare === "On") {
     screenMessage("PPT Immersive Share On", 9, 8200, 1300);
@@ -388,17 +396,15 @@ function updatePresentationMode(presentationMode) {
 
 // Determine active calls.  if active calls change from 0 to 1, reset presentation to default
 function determineActiveCalls(newActiveCalls) {
-  logFuncName("determineActiveCalls");
-  if ((newActiveCalls == 1 && state.activeCalls == 0)) {
+  logFuncName("determineActiveCalls() newActiveCalls: " + newActiveCalls + " state.activeCalls: " + state.activeCalls);
+  if ((newActiveCalls == 1 && state.activeCalls == 0)) {  // Call is connecting
+    // do something when call connects
     resetToDefault();
-  } else if (newActiveCalls == 0 && state.activeCalls == 1) {
+  } else if (newActiveCalls == 0 && state.activeCalls == 1) {  // Call is disconnecting
+    // do something when call disconnects
     resetToDefault();
-    setTimeout(()=>{
-      selfviewOff();
-      xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
-    }, 750)
   }
-  state.activeCalls = newActiveCalls;
+  state.activeCalls = newActiveCalls;   
   consoleState();
 }
 
@@ -486,6 +492,7 @@ function updatePresentationLocalSource(event) {
 }
 
 function screenMessage(message, duration = 8, x = 10000, y = 1300) {
+  logFuncName('screenMessage() message: ' + message)
   xapi.Command.UserInterface.Message.TextLine.Display({
     Text: message,
     X: x,
@@ -495,7 +502,7 @@ function screenMessage(message, duration = 8, x = 10000, y = 1300) {
 }
 
 function updateVirtualBackgroundState(event) {
-  logFuncName('updateVirtualBackgroundState');
+  logFuncName('updateVirtualBackgroundState() event' + JSON.stringify(event));
   if ("Image" in event) {
     state.lastBackground.image = event.Image;
   }
@@ -527,9 +534,9 @@ xapi.Status.Video.Input.Connector.get().then(updateDefaultPc);
 
 xapi.Status.Video.Input.Connector.on(updateDefaultPc);
 
-xapi.Status.Video.Input.MainVideoMute.get().then(updateVideoMute)
+xapi.Status.Video.Input.MainVideoMute.get().then(updateVideoMuteState)
 
-xapi.Status.Video.Input.MainVideoMute.on(updateVideoMute);
+xapi.Status.Video.Input.MainVideoMute.on(updateVideoMuteState);
 
 xapi.Status.SystemUnit.State.NumberOfActiveCalls.get().then(determineActiveCalls);
 
@@ -537,4 +544,4 @@ xapi.Status.SystemUnit.State.NumberOfActiveCalls.on(determineActiveCalls);
 
 xapi.Event.UserInterface.Message.TextInput.Response.on(powerPointCommand);
 
-xapi.Event.UserInterface.Message.Prompt.Response.on(promptCommand); 
+xapi.Event.UserInterface.Message.Prompt.Response.on(promptCommand);
