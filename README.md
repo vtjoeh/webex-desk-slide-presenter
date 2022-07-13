@@ -10,12 +10,12 @@ Overlay your video on a PowerPoint slide using the Webex Desk.  The PowerPoint u
 - Download the VB PowerPoint macro TemplateDeskProMacro_ver0.1.x.pptm 
 - Webex Desk needs to be reachable over the network from your PC or Mac 
 
-**Working on updating for ver 0.1.5**
+**Working on updating for ver 0.1.5.4**
 Step-by-step directions for ver 0.1.3 setup can be found in [Directions for WebexDeskSlidePresenter.pdf](https://github.com/vtjoeh/webex-desk-slide-presenter/blob/main/Directions%20for%20WebexDeskSlidePresenter_ver_0.1.3.pdf)
 
 ## Video Tutorial and demo
 
-**Working on updating Tutorial for ver 0.1.5.3** 
+**Working on updating Tutorial for ver 0.1.5.4** 
 
 [Webex Desk Slide Presenter: Basic Setup (video 1 of 2) ver 0.1.3](https://app.vidcast.io/share/a56eda21-4818-4dab-a2ff-9448277e7783)
 
@@ -27,6 +27,18 @@ If you are using the "webex-presenter-desk-pro" macro that I wrote on your Webex
 
 
 # Release Notes
+
+### ver 0.1.5.4
+
+- **Fixed Bug**
+  - Fixed a major bug that caused problems with using a PC virtual background when not using the PowerPoint.  
+- **New Feature**
+  - **Reset screen by calling** fixscreen@example.com - Call this URI to reset the screen and virtual background settings on the Webex Desk.  The call will not connect but it triggers the reset. (This could have been a button on the touchpanel, but I was trying to avoid that). This was added in case a scenario happens that wasn't tested causes problems on the Webex Desk or if your computer freezes and the PowerPoint can't send the reset command.  Call needs to be made outside of a pre-existing calls. 
+  - **Update Notification** - Added code that checks for updated versions of WebexDeskSlidePresenter.js on Github and alerts the user an update is available.  By default this is done on all macro restarts and between 3:00 am and 4:00 am in the morning.  These settings can be customized in the javascript variables: 
+checkUpdates.on, checkUpdates.onStartup, checkUpdates.startTime, checkUpdates.window 
+See the Javascript comments for more details. 
+- **Compatible** 
+  - This version of the javascript macro is comptabile with TemplateDeskProMacro_ver0.1.5.3.pptm
 
 ### ver 0.1.5.3 
 
