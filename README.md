@@ -31,7 +31,7 @@ If you are using the "webex-presenter-desk-pro" macro that I wrote on your Webex
 ### ver 0.1.5.4
 
 - **Fixed Bug**
-  - Fixed a major bug that caused problems with using a PC virtual background when not using the PowerPoint.  
+  - Fixed a major bug that caused problems with using a PC virtual background when not using the PowerPoint.  Now at the end of the PowerPoint presentation, the Webex Desk will return to the last virtual background setting _except_ for the PC (HDMI or USB-C) source.  After the presentation is done, the PC can then be manually selected as a virtual background if desired. 
 - **New Feature**
   - **Reset screen by calling** fixscreen@example.com - Call this URI to reset the screen and virtual background settings on the Webex Desk.  The call will not connect but it triggers the reset. (This could have been a button on the touchpanel, but I was trying to avoid that). This was added in case a scenario happens that wasn't tested causes problems on the Webex Desk or if your computer freezes and the PowerPoint can't send the reset command.  Call needs to be made outside of a pre-existing calls. 
   - **Update Notification** - Added code that checks for updated versions of WebexDeskSlidePresenter.js on Github and alerts the user an update is available.  By default this is done on all macro restarts and between 3:00 am and 4:00 am in the morning.  These settings can be customized in the javascript variables: 
