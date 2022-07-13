@@ -10,8 +10,8 @@ Overlay your video on a PowerPoint slide using the Webex Desk.  The PowerPoint u
 - Download the VB PowerPoint macro TemplateDeskProMacro_ver0.1.x.pptm 
 - Webex Desk needs to be reachable over the network from your PC or Mac 
 
-**Working on updating for ver 0.1.5.4**
-Step-by-step directions for ver 0.1.3 setup can be found in [Directions for WebexDeskSlidePresenter.pdf](https://github.com/vtjoeh/webex-desk-slide-presenter/blob/main/Directions%20for%20WebexDeskSlidePresenter_ver_0.1.3.pdf)
+
+Step-by-step directions for ver 0.1.3 setup can be found in [Directions for WebexDeskSlidePresenter.pdf](https://github.com/vtjoeh/webex-desk-slide-presenter/blob/main/Directions%20for%20WebexDeskSlidePresenter_ver_0.1.3.pdf) **Working on updating for ver 0.1.5.4**
 
 ## Video Tutorial and demo
 
