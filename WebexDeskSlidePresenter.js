@@ -19,7 +19,7 @@ const version = '0.1.5.4';
 
 const checkUpdates = {};
 
-checkUpdates.on = true; // true or false.  Default: true.  Message is placed on screen.  
+checkUpdates.on = true; // true or false.  Default: true.  Message is placed on screen that the WebexDeskSlidePresenter is updated on Github.  
 
 checkUpdates.onStartup = true; // true or false. Default: true.  Checks the status on the startup of the script.  Nothing is shown if the system is in a call.  
 
@@ -31,7 +31,7 @@ checkUpdates.timerInterval = 30; // minutes. Default: 30 min. setTimeout value t
 
 checkUpdates.lastCheckTime = 60 * 25; // last time the update was checked listed as Minute of the Day.   Default is 25 hours.  Value is reset when checked. 
 
-const debugOn = true;  // true or false.  Default: false - Writes debug information to the console. 
+const debugOn = false;  // true or false.  Default: false - Writes debug information to the console. 
 
 const fixScreenUri = 'fixscreen@example.com'  // URI to call to reset the screen of the device.  
 
