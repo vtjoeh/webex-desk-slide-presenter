@@ -1,5 +1,5 @@
 /*
-WebexDeskSlidePresenter.js ver 0.1.5.3 for the Webex Desk Pro, Desk and Desk Mini
+WebexDeskSlidePresenter.js ver 0.1.5.4 for the Webex Desk Pro, Desk and Desk Mini
 
 Purpose: Use PowerPoint and Webex Desk Immersive Share to superimpose your image at a predefined location in a PowerPoint slide.  
 This macro requires the PowerPoint run a VB macro that communicates with the endpoint.    
@@ -15,7 +15,25 @@ No warranty implied or otherwise.
 
 import xapi from 'xapi';
 
-const debugOn = false;  // true or false.  Default: false - Writes debug information to the console. 
+const version = '0.1.5.4';
+
+const checkUpdates = {};
+
+checkUpdates.on = true; // true or false.  Default: true.  Message is placed on screen.  
+
+checkUpdates.onStartup = true; // true or false. Default: true.  Checks the status on the startup of the script.  Nothing is shown if the system is in a call.  
+
+checkUpdates.startTime = '03:00'; // hh:mm in military time. Default: '03:00' (e.g. 3:00 am).  Start of time to check for updates. Local time of hte Webex desk. 
+
+checkUpdates.window = 60; // minutes.  Default: 60 min.  The window to check the times. checkUpdates.startTime + checkUpdates.window.  Default updates are checked between 03:00 am and 04:00 am.  
+
+checkUpdates.timerInterval = 30; // minutes. Default: 30 min. setTimeout value to check if updates need to be checked.   This number should be less than the checkUpdates.timerInterval.  
+
+checkUpdates.lastCheckTime = 60 * 25; // last time the update was checked listed as Minute of the Day.   Default is 25 hours.  Value is reset when checked. 
+
+const debugOn = true;  // true or false.  Default: false - Writes debug information to the console. 
+
+const fixScreenUri = 'fixscreen@example.com'  // URI to call to reset the screen of the device.  
 
 let vidcastSelfview = {};
 
@@ -49,7 +67,9 @@ state.contentId = 2 // 2 or 3 - Default input for Content Channel. On Desk Pro  
 
 state.backgroundModePc; // 'UsbC' or 'Hdmi'  - Automatically updated when state.contentId is updated to whatever source was shown last.  
 
-state.speakerTrackDiag = 'notset'; // 'On', 'Off' or 'notset'  used to store the last command to turn SpearkerTrack diagnostic mode on or off.  
+state.speakerTrackDiag = 'notset'; // 'On', 'Off' or 'notset'  used to store the last command to turn SpearkerTrack diagnostic mode on or off. 
+
+state.cameraOnlyAsContent = 'notset' // 'On', 'Off' or 'notset' used to store the last command to turn the Camera Only when sent as content. 
 
 state.hdmi = {};
 
@@ -67,9 +87,9 @@ state.lastCommand // last command received from the PowerPoint
 
 state.lastBackground = { image: defaultBackground.Image, mode: defaultBackground.Mode };
 
-function logFuncName(text) {
+function logFuncName(functionName, optionalText = "") {
   if (debugOn) {
-    console.info('function ' + text + '()');
+    console.info('function ' + functionName + '() ' + optionalText);
   }
 }
 
@@ -92,8 +112,8 @@ function selectDefaultBackground() {
       nextMode = defaultBackground.Mode;
       nextImage = defaultBackground.Image;
     } else { // defaultBackground.State === "Auto"
-      nextMode = state.lastBackground.mode;
-      nextImage = state.lastBackground.image;
+      nextMode = state.lastBackground.mode || defaultBackground.Mode;
+      nextImage = state.lastBackground.image || defaultBackground.Mode;
     }
 
     xapi.Command.Cameras.Background.Set({ Mode: nextMode, Image: nextImage }).catch(() => {
@@ -105,7 +125,7 @@ function selectDefaultBackground() {
 }
 
 function turnSpeakerTrackDiagOff() {
-  logFuncName("turnSpeakerTrackDiagOff() state.speakerTrackDiag: " + state.speakerTrackDiag)
+  logFuncName("turnSpeakerTrackDiagOff", "state.speakerTrackDiag " + state.speakerTrackDiag)
   if (state.speakerTrackDiag !== 'Off') {
     state.speakerTrackDiag = 'Off';
     xapi.Command.Cameras.SpeakerTrack.Diagnostics.Stop();
@@ -115,28 +135,32 @@ function turnSpeakerTrackDiagOff() {
 
 function resetToDefault() {
   // Turn off Immersive Share and go back to default
-  logFuncName('resetToDefault')
-  state.slideImmersiveShare = 'Off';
-      xapi.Status.SystemUnit.State.NumberOfActiveCalls.get().then(activeCalls => {
-        logFuncName('resetToDefault()->xapi.Status.SystemUnit.State.NumberOfActiveCalls.get(): ' + activeCalls); 
-        if (activeCalls == 0) {
-          setTimeout(()=>{  
-            // selfviewOff();
-            xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
-            xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off', Mode: 'Off' }); 
-            xapi.Command.Video.Input.MainVideo.Unmute(); 
-            selectDefaultBackground();
-          }, 250)  // add some delay to keep fullscreen selfview from flashing on screen
-        } else {
-          xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off' }); 
-          xapi.Command.Video.Input.MainVideo.Unmute(); 
-          xapi.Command.Presentation.Stop().then(() => {
-            // Do any clean up 
-            xapi.Command.Video.Input.MainVideo.Unmute();
-            selectDefaultBackground();
-          })
-        }
-      })
+  logFuncName('resetToDefault', 'state.slideImmersiveShare: ' + state.slideImmersiveShare)
+  if (state.slideImmersiveShare === 'On' || state.speakerTrackDiag === 'On' || state.cameraOnlyAsContent === 'On') {
+    state.slideImmersiveShare = 'Off';
+    state.cameraOnlyAsContent = 'Off';
+    xapi.Status.SystemUnit.State.NumberOfActiveCalls.get().then(activeCalls => {
+      logFuncName('resetToDefault()->xapi.Status.SystemUnit.State.NumberOfActiveCalls.get(): ' + activeCalls);
+      if (activeCalls == 0) {
+        setTimeout(() => {
+          xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
+          xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off', Mode: 'Off' });
+          xapi.Command.Video.Input.MainVideo.Unmute();
+          xapi.Command.Cameras.Background.ForegroundParameters.Reset();
+          selectDefaultBackground();
+        }, 250)  // add some delay to keep fullscreen selfview from flashing on screen
+      } else {
+        xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off' });
+        xapi.Command.Video.Input.MainVideo.Unmute();
+        xapi.Command.Presentation.Stop().then(() => {
+          // Do any clean up 
+          xapi.Command.Cameras.Background.ForegroundParameters.Reset();
+          xapi.Command.Video.Input.MainVideo.Unmute();
+          selectDefaultBackground();
+        })
+      }
+    })
+  }
   consoleState();
 }
 
@@ -180,9 +204,9 @@ function parseCommand(string) {
   for (let i in partsArray) {
     let keyValue = partsArray[i].split(':');
     keyValueArray.push(' "' + keyValue[0] + '" : "' + keyValue[1] + '"')
-  } 
+  }
   locationObj = JSON.parse('{' + keyValueArray.join(',') + ' }');
-  
+
   return locationObj;
 }
 
@@ -243,7 +267,6 @@ function powerPointCommand(pptCmd) {
 
           if (pptCmd.Text === 'pptImmersiveSlideShowEnd') {
             screenMessage("PPT Immersive Share End", 2);
-            // xapi.Command.Cameras.Background.ForegroundParameters.Reset();
           }
         }, 100)
       }); // add a little delay for a smoother transition
@@ -253,6 +276,7 @@ function powerPointCommand(pptCmd) {
       selectDefaultBackground();
       let location = { X: '5000', Y: '5000', Scale: '100', Opacity: '100', Composition: 'VideoPip' };
       virtualBackground(location, defaultBackground);
+      state.cameraOnlyAsContent = 'On';
     }
     else if (pptCmd.Text === 'pptImmersiveStopContentShare') {
       resetToDefault();
@@ -404,7 +428,7 @@ function determineActiveCalls(newActiveCalls) {
     // do something when call disconnects
     resetToDefault();
   }
-  state.activeCalls = newActiveCalls;   
+  state.activeCalls = newActiveCalls;
   consoleState();
 }
 
@@ -428,6 +452,110 @@ function openPromptDisplay(feedbackId) {
     'Option.1': 'Yes',
     'Option.2': 'Cancel',
   });
+}
+
+function doCheckUpdate() {
+  if (checkUpdates.on === true && state.activeCalls === '0' && state.slideImmersiveShare === 'Off') {
+    checkVersionUpdate();
+  }
+}
+
+function turnOnHttpClient(delay = 7000) {
+  if (checkUpdates.on) {
+    xapi.Config.HttpClient.Mode.set('On');
+    if (checkUpdates.onStartup) {
+      setTimeout(doCheckUpdate, delay);
+    }
+  }
+}
+
+function checkVersionUpdate() {
+  let url = "https://raw.githubusercontent.com/vtjoeh/webex-desk-slide-presenter/main/version.txt";
+  let headers = 'Content-Type: application/json'
+  xapi.Command.HttpClient.Get({
+    "Url": url,
+    "Header": headers
+  }).then((response) => {
+    let responseJSON = response.Body.replace(/\n/g, '').replace(/\'/g, '"');
+    responseJSON = JSON.parse(responseJSON);
+
+    if (responseJSON['WebexDeskSlidePresenter.js']) {
+      let newVersion = responseJSON['WebexDeskSlidePresenter.js'];
+      if (compareReleaseNumber(newVersion, version)) {
+        notifyUserOfUpdate(newVersion);
+      } else {
+        console.info('WebexDeskSlidePresenter.js is up to date. Current version: ' + version + '. Github version: ' + newVersion);
+      };
+    }
+  }).catch(error => {
+    console.info('Could not reach ' + url);
+    checkUpdates.lastCheckTime = 60 * 25; // allow for retrying to connect if it is in the time window.   
+    if (error.message) {
+      console.info('error.message', error.message);
+    }
+    if (error.data && error.data.StatusCode) {
+      console.info('error.data.StatusCode', error.data.StatusCode);
+    }
+
+  });
+}
+
+// return true if the newVersion is newer than the oldVersion.  Needs to be in the format [number].[number].[number] for example 0.1.003 or 2.3.4
+function compareReleaseNumber(newVersion, oldVersion = version) {
+  newVersion = newVersion.split('.');
+  oldVersion = oldVersion.split('.');
+
+  for (let i = 0; i < newVersion.length; i++) {
+    let oldVersionElement = oldVersion[i] || '0';
+    let newVersionElement = newVersion[i];
+
+    if (i === 0) {  // if the first element has a leading zero, strip it.  For example 01 becomes 1.  Other elements 01 is sm
+      oldVersionElement = parseInt(oldVersionElement, 10);
+      newVersionElement = parseInt(newVersionElement, 10);
+    }
+
+    if (newVersionElement > oldVersionElement) {
+      return true;
+    }
+    else if (newVersion[i] < oldVersionElement) {
+      return false;
+    }
+  }
+  return false;
+}
+
+function notifyUserOfUpdate(newVersion) {
+  logFuncName('openPromptDisplay');
+  let text = 'Current version: ' + version + ', New version: ' + newVersion + ', Available at:<br> https://github.com/vtjoeh/webex-desk-slide-presenter';
+  console.info('WebexDeskSlidePresenter.js version check.', text);
+  if (text.length > 254) {
+    text = ' New version available at:<br/> https://github.com/vtjoeh/webex-desk-slide-presenter';
+  }
+  xapi.Command.UserInterface.Message.Prompt.Display({
+    Title: 'WebexDeskSlidePresenter.js       macro update available.',
+    Text: text,
+    Duration: 0,
+    FeedbackId: 'Notify user of update for WebexDeskSlidePresenter.js cleared',
+    'Option.1': 'Ok',
+  });
+}
+
+function turnOnTimerUpdateCheck() {
+  let arrayCheckTimeStart = checkUpdates.startTime.split(':');
+  let checkMinuteOfDayStart = parseInt(arrayCheckTimeStart[0], 10) * 60 + parseInt(arrayCheckTimeStart[1], 10);
+  let checkMinuteOfDayEnd = checkMinuteOfDayStart + checkUpdates.window;
+  let currentMinuteOfDay = (new Date).getHours() * 60 + (new Date).getMinutes();
+  // console.log('checkMinuteOfDayStart', checkMinuteOfDayStart, 'currentMinuteOfDay', currentMinuteOfDay, "checkMinuteOfDayEnd", checkMinuteOfDayEnd, 'checkUpdates.lastCheckTime', checkUpdates.lastCheckTime, 'checkUpdates.window', checkUpdates.window);
+
+  if (checkMinuteOfDayStart < currentMinuteOfDay && currentMinuteOfDay < checkMinuteOfDayEnd && currentMinuteOfDay < checkUpdates.lastCheckTime) {
+  //   console.log('do checkupdate');
+    checkUpdates.lastCheckTime = currentMinuteOfDay;
+    doCheckUpdate();
+  }
+  else {
+  //  console.log('no need for checkupdate');
+  }
+  setTimeout(turnOnTimerUpdateCheck, checkUpdates.timerInterval * 60 * 1000 ); 
 }
 
 // If a Prompt Command with FeedbackId X:<100>Y:<1000>Scale:<1000>Opacity:  and Option 1 (OK) is received, then send the last command.  
@@ -501,6 +629,23 @@ function screenMessage(message, duration = 8, x = 10000, y = 1300) {
   });
 }
 
+function resetScreen(uri) {
+  logFuncName("resetScreen", "uri: " + uri + " fixScreenUri: " + fixScreenUri);
+  if (uri.toLowerCase() === fixScreenUri.toLowerCase()) {
+    xapi.Command.Cameras.SpeakerTrack.Diagnostics.Stop();
+    xapi.Command.Presentation.Start({ ConnectorId: state.contentId });
+    xapi.Command.Video.Selfview.Set({ FullscreenMode: 'Off', Mode: 'Off' });
+    xapi.Command.Video.Input.MainVideo.Unmute();
+    xapi.Command.Cameras.Background.ForegroundParameters.Reset();
+    xapi.Command.Cameras.Background.Set({ Mode: 'Disabled', Image: 'Image1' });
+    state.speakerTrackDiag = 'Off';
+    state.slideImmersiveShare = 'Off';
+    state.cameraOnlyAsContent = 'Off';
+    screenMessage('Screen settings reset to default.  Virtual background set to off.', 12);
+  }
+
+}
+
 function updateVirtualBackgroundState(event) {
   logFuncName('updateVirtualBackgroundState() event' + JSON.stringify(event));
   if ("Image" in event) {
@@ -513,6 +658,10 @@ function updateVirtualBackgroundState(event) {
   }
   consoleState();
 }
+
+setTimeout(turnOnTimerUpdateCheck, 7000);
+
+turnOnHttpClient();
 
 setBackgroundModePc(state.contentId);
 
@@ -545,3 +694,5 @@ xapi.Status.SystemUnit.State.NumberOfActiveCalls.on(determineActiveCalls);
 xapi.Event.UserInterface.Message.TextInput.Response.on(powerPointCommand);
 
 xapi.Event.UserInterface.Message.Prompt.Response.on(promptCommand);
+
+xapi.Event.CallDisconnect.DisplayName.on(resetScreen);
