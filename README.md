@@ -3,11 +3,10 @@ Overlay your video on a PowerPoint slide using a Webex Desk Pro, Webex Desk or W
 
 ## Demo Video
 <a href="https://app.vidcast.io/share/1ca0edeb-4bb6-4e7e-af7a-b49f74530183" target="_blank" > 
-  <img width="500" alt="image" src="https://user-images.githubusercontent.com/16569532/179886825-d1832a4c-43fa-4b11-b1b7-b7e955ffd3a4.png">
+  <img width="500" alt="image" src="https://user-images.githubusercontent.com/16569532/179886825-d1832a4c-43fa-4b11-b1b7-b7e955ffd3a4.png" />
 </a>
-<br/>
-Demo video by DJ Uittenbogaard <br/>
-https://app.vidcast.io/share/1ca0edeb-4bb6-4e7e-af7a-b49f74530183
+
+Demo video on [vidcast](https://app.vidcast.io/share/1ca0edeb-4bb6-4e7e-af7a-b49f74530183/) 
 
 ## Requirement for Webex Desk Slide Presenter:
 
