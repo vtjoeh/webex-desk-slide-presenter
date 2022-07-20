@@ -5,28 +5,52 @@
 ' Author: joehughe at cisco dot com
 ' https://github.com/vtjoeh/webex-desk-slide-presenter
 
+Public rib As IRibbonUI
+
 Private Sub SendCommand(command As String)
     Dim curlString, username, password, ipaddress, body, lastCommand As String
     
     lastCommand = GetTag("LASTCOMMAND")
 
     If Not (lastCommand = command) Then
-        username = GetShapeTextValue("setting_user")
-        password = GetShapeTextValue("setting_pwd")
-        ipaddress = GetShapeTextValue("setting_ip")
+        username = Trim(GetShapeTextValue("setting_user"))
+        password = Trim(GetShapeTextValue("setting_pwd"))
+        ipaddress = Trim(GetShapeTextValue("setting_ip"))
+        
+        ' supported Password characters A-Z a-z 0-9 and `~!@#\$%^&*()_+-={}|[]\:";'?,./
+        ' Explicitly not supported:  < >
+        If InStr(password, "<") Or InStr(password, ">") Then
+            MsgBox ("Webex Desk Slide Presenter - Invalid Password:  Characters < and > are not supported in the password.")
+            Exit Sub
+        End If
+               
+        #If Mac Then
+            password = Replace(password, "\", "\\")
+            password = Replace(password, "$", "\$")
+            password = Replace(password, "`", "\`")
+        #Else
+            ' Run on PC
+        #End If
     
+        password = Replace(password, """", "\""")
+        
         body = "<Command><UserInterface><Message><TextInput><Response><FeedbackId>pptVideoSquare</FeedbackId><Text>" + command + "</Text></Response></TextInput></Message></UserInterface></Command>"
-        curlString = "curl -k -u """ + username + ":" + password + """ -d """ + body + """ https://" + ipaddress + "/putxml"
+
+        curlString = "curl -k -d """ + body + """ https://" + ipaddress + "/putxml -u """ + username + ":" + password + """"
+
+        ' Debug.Print (curlString)
         Debug.Print (GetTime + " Command: " + command)
         StoreTag "LASTCOMMAND", (command)
+        
         Shell (curlString)
+
     End If
 End Sub
 
 Private Sub MakePasswordTransparent()
     Dim i As Integer
-    Dim currentSlide As Slide
-    Dim shp As Shape
+    Dim currentSlide As slide
+    Dim shp As shape
     Dim done As Boolean
     
     done = False
@@ -36,7 +60,7 @@ Private Sub MakePasswordTransparent()
         For Each shp In currentSlide.Shapes
         
             If shp.Name = "setting_pwd" Then
-                shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
+                shp.TextFrame2.TextRange.Font.Fill.Transparency = 1#
                 Exit For
             End If
          Next
@@ -47,8 +71,8 @@ End Sub
 Private Function GetShapeTextValue(shapeName As String) As String
     Dim i As Integer
     Dim passwordVisible As String
-    Dim currentSlide As Slide
-    Dim shp As Shape
+    Dim currentSlide As slide
+    Dim shp As shape
     Dim done As Boolean
     
     GetShapeTextValue = "not found"
@@ -58,11 +82,11 @@ Private Function GetShapeTextValue(shapeName As String) As String
         Set currentSlide = ActivePresentation.Slides(i)
         For Each shp In currentSlide.Shapes
             If shp.Name = "setting_pwd" And GetTag("PASSWORDVISIBLE") = "false" Then
-                shp.TextFrame2.TextRange.Font.Fill.transparency = 1#
+                shp.TextFrame2.TextRange.Font.Fill.Transparency = 1#
             End If
             
             If LCase(shp.Name) = shapeName Then
-                GetShapeTextValue = Trim(ActivePresentation.Slides(i).Shapes(shapeName).TextFrame.TextRange.text)
+                GetShapeTextValue = Trim(ActivePresentation.Slides(i).Shapes(shapeName).TextFrame.TextRange.Text)
                 done = True
                 Exit For
             End If
@@ -76,13 +100,13 @@ Public Sub ToggleSelfviewOn()
     OnSlideShowPageChange
 End Sub
 
+' Toggle the visibility of the password on or off
 Public Sub MakePasswordVisible()
-   ' Toggle the visibility of the password on or off
-    If ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 0# Then
-        ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 1#
+    If ActivePresentation.SlideShowWindow.View.slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.Transparency = 0# Then
+        ActivePresentation.SlideShowWindow.View.slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.Transparency = 1#
         StoreTag "PASSWORDVISIBLE", ("false")
     Else
-        ActivePresentation.SlideShowWindow.View.Slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.transparency = 0#
+        ActivePresentation.SlideShowWindow.View.slide.Shapes("setting_pwd").TextFrame2.TextRange.Font.Fill.Transparency = 0#
         StoreTag "PASSWORDVISIBLE", ("true")
     End If
 End Sub
@@ -120,8 +144,8 @@ Sub OnSlideShowTerminate()
 End Sub
 
 Private Sub LoopThroughShapes(slideNumber)
-    Dim currentSlide As Slide
-    Dim shp As Shape
+    Dim currentSlide As slide
+    Dim shp As shape
     Dim strEqual, shpName, defaultNoCommand As String
     Dim shapeFound As Boolean
     
@@ -139,7 +163,7 @@ Private Sub LoopThroughShapes(slideNumber)
             StoreTag "LASTCOMMAND", ("SlideShowEnd")
             shapeFound = True
             Exit For
-        ElseIf shpName = "novideo" Then
+        ElseIf shpName = "novideo" Or shpName = "contentonly" Then
             SendCommandNoVideo
             shapeFound = True
             Exit For
@@ -165,7 +189,7 @@ Private Sub LoopThroughShapes(slideNumber)
             shapeFound = True
             PreviousSlideCommand (CLng(slideNumber))
             Exit For
-        ElseIf shpName = "speakertrackdiagnostic" Then
+        ElseIf shpName Like "speakertrackdiagnostic*" Then
             SendCommand ("pptImmersiveSpeakerTrackDiag")
             shapeFound = True
             Exit For
@@ -196,11 +220,11 @@ Private Sub GetDefaultSlideCommand(slideNumber)
         If Not (CLng(command) <= ActivePresentation.Slides.Count And CLng(command) > 0) Then
             command = "default"
         End If
-    ElseIf Not (command = "novideo" Or command = "previous" Or command = "novideo" Or command = "stopimmersiveshare") Then
+    ElseIf Not (command = "novideo" Or command = "contentonly" Or command = "previous" Or command = "stopimmersiveshare") Then
         command = "default"
     End If
  
-    If command = "novideo" Or command = "default" Then
+    If command = "novideo" Or command = "contentonly" Or command = "default" Then
         SendCommandNoVideo
     ElseIf command = "stopimmersiveshare" Then
         SendCommand ("pptImmersiveShareOff")
@@ -221,7 +245,7 @@ Private Sub PreviousSlideCommand(slideNumber As Long)
         End If
 End Sub
 
-Private Sub GetShapeDetails(shp As Shape)
+Private Sub GetShapeDetails(shp As shape)
     Dim shapeDetails, pythonPath, Composition, lastShapeDetails As String
     Dim shpX, shpY, shpScale, shpOpacity, tempOpacity, slideWidth, slideHeight As Integer
     Dim arrSplitString() As String
@@ -250,7 +274,7 @@ Private Sub GetShapeDetails(shp As Shape)
             End If
         End If
     Next Item
-
+    ' Convert coordinates and size of VideoSquare for the Webex Desk
     slideWidth = CDbl(ActivePresentation.PageSetup.slideWidth)
     slideHeight = CDbl(ActivePresentation.PageSetup.slideHeight)
     shpX = CInt((shp.Left + shp.Width / 2) * 10000 / slideWidth)
@@ -282,3 +306,299 @@ Private Function GetTag(tagName As String) As String
         Next
     End With
 End Function
+
+' *
+' *  The following command support the Ribbon on the PC only
+' *
+
+'Callback for customUI.onLoad
+Sub RibbonOnLoad(ribbon As IRibbonUI)
+    ' Set rib = ribbon
+    ' rib.Invalidate
+    ' rib.ActivateTab ("tabWebexDeskTab")
+End Sub
+
+' Webex Desk tab is invisible by default.  Make visibile for the PC, does nothing on the Mac
+Sub GetVisible(control As IRibbonControl, ByRef visible)
+     visible = True
+End Sub
+
+' Callback from Ribbonx onAction
+Sub InsertVideoSquare(control As IRibbonControl)
+    Dim arrayShapes
+    Dim strShpNames As String
+    Dim shpNumber As Integer
+        
+    arrayShapes = ArrayOfShapesOnSlide
+    shpNumber = UBound(arrayShapes)
+    
+    If shpNumber = -1 Then ' No shape on screen
+        InsertRectangle (control.Id)
+    ElseIf shpNumber = 0 Then ' 1 VideoSquare on Screen.  Update the name if videosquare* or delete and recreate
+        strShpNames = Trim(Join(arrayShapes))
+        If LCase(strShpNames) Like "videosquare*" Then
+            UpdateVideoSquareName (control.Id)
+        Else
+            DeleteOldInsertNewSquare (control.Id)
+        End If
+    Else  ' 2 or more shapes already on the screen.
+        strShpNames = Join(arrayShapes, vbNewLine & "¥  ")
+        strShpNames = vbNewLine & "¥  " + strShpNames
+        MsgBox "Multiple VideoSquare or similar command shapes on this slide.  Only 1 is allowed per a slide. Curent shapes: " + strShpNames + vbNewLine + vbNewLine + "Please delete some VideoSquares.", Title:="Insert VideoSquare"
+    End If
+End Sub
+
+Sub DeleteOldInsertNewSquare(newSquare As String, Optional ByVal offScreen As Boolean = False)
+    Dim shape As shape
+    Dim sld As slide
+    Dim i As Integer
+    Dim done As Boolean
+    Dim arrNames
+    
+    arrNames = Array("videosquare*", "cameraonly", "contentonly", "novideo", "sidebyside*", "prominent*", "stopimmersiveshare", "stopcontentshare", "speakertrackdiagnostic*", "previous*")
+    
+    done = False
+    Set sld = Application.ActiveWindow.View.slide
+    
+    ' Deletes 1 shape only and break loop
+    For Each shape In sld.Shapes
+        For i = LBound(arrNames) To UBound(arrNames)
+            If Trim(LCase(shape.Name)) Like arrNames(i) Then
+                shape.Delete
+                done = True
+                Exit For
+            End If
+        Next
+        If done Then Exit For
+    Next shape
+    
+    If offScreen = False Then
+        InsertRectangle (newSquare)
+    Else
+        InsertRectangleOffScreen (newSquare)
+    End If
+End Sub
+
+Sub UpdateVideoSquareName(newName As String)
+    Dim shp As shape
+    Dim currentSlide As slide
+    
+    Set currentSlide = Application.ActiveWindow.View.slide
+    
+    For Each shp In currentSlide.Shapes
+        If Trim(LCase(shp.Name)) Like "videosquare*" Then
+            shp.Name = newName
+        End If
+    Next
+End Sub
+
+' Callback from Ribbonx onAction
+Sub InsertSquareOffScreen(control As IRibbonControl)
+    Dim arrayShapes
+    Dim strShpNames As String
+    Dim shpNumber As Integer
+        
+    arrayShapes = ArrayOfShapesOnSlide
+    shpNumber = UBound(arrayShapes)
+    
+    If shpNumber = -1 Then
+        InsertRectangleOffScreen (control.Id)
+    ElseIf shpNumber = 0 Then
+        DeleteOldInsertNewSquare control.Id, offScreen:=True
+    Else
+        strShpNames = Join(arrayShapes, vbNewLine & "¥  ")
+        strShpNames = vbNewLine & "¥  " + strShpNames
+        MsgBox "Multiple VideoSquare or similar command shapes on this slide.  Only 1 is allowed per a slide. Curent shapes: " + strShpNames + vbNewLine + vbNewLine + "Please delete some VideoSquares.", Title:="Insert VideoSquare"
+    End If
+End Sub
+
+'Callback for ToggleShapeTransparent onAction
+Sub ToggleShapeTransparent(control As IRibbonControl)
+    Dim arrayShapes
+    Dim strShpNames As String
+    Dim shpNumber As Integer
+    Dim shp As shape
+    Dim currentSlide As slide
+    arrayShapes = ArrayOfShapesOnSlide
+    shpNumber = UBound(arrayShapes)
+
+    If shpNumber = 0 Then
+        strShpNames = Join(arrayShapes)
+        Set currentSlide = Application.ActiveWindow.View.slide
+        For Each shp In currentSlide.Shapes
+            If shp.Name = strShpNames Then
+                If (shp.visible = False) Then
+                    shp.visible = True
+                Else
+                    shp.visible = False
+                End If
+            End If
+        Next
+    ElseIf shpNumber = -1 Then
+        MsgBox "No VideoSquare or similar shape found on this slide to toggle visible.", Title:="Toggle Visibile"
+    Else
+        strShpNames = Join(arrayShapes, vbNewLine & "¥  ")
+        strShpNames = vbNewLine & "¥  " + strShpNames
+        MsgBox "Multiple VideoSquare or similar command shapes on this slide.  Only 1 is allowed per a slide. Curent shapes: " + strShpNames + vbNewLine + vbNewLine + "Please delete some VideoSquares.", Title:="Toggle Visible"
+    End If
+End Sub
+
+'Callback for TogglePasswordVisible onAction
+Sub TogglePasswordVisible(control As IRibbonControl)
+    Dim currentSlide As slide
+    Dim shp As shape
+    Dim found As Boolean
+    
+    found = False
+    
+    Set currentSlide = Application.ActiveWindow.View.slide
+    For Each shp In currentSlide.Shapes
+        If shp.Name = "setting_pwd" Then
+                If (shp.TextFrame2.TextRange.Font.Fill.Transparency = 1#) Then
+                    shp.TextFrame2.TextRange.Font.Fill.Transparency = 0#
+                Else
+                    shp.TextFrame2.TextRange.Font.Fill.Transparency = 1#
+                End If
+                found = True
+        End If
+    Next
+    
+    If found = False Then
+        MsgBox ("No password shape 'setting_pwd' found on current slide")
+    End If
+End Sub
+
+
+Sub TypeOfVideoSquare(control As IRibbonControl)
+    Dim arrayShapes
+    Dim strShpNames As String
+    Dim shpNumber As Integer
+        
+    arrayShapes = ArrayOfShapesOnSlide
+    shpNumber = UBound(arrayShapes)
+
+    strShpNames = Join(arrayShapes, vbNewLine & "¥  ")
+    strShpNames = vbNewLine & "¥  " + strShpNames
+    
+    If shpNumber = 0 Then
+        MsgBox "Shape Name: " + strShpNames, Title:="Type of Video Square"
+    ElseIf shpNumber = -1 Then
+        MsgBox "No VideoSquare shapes found on this slide", Title:="Type of Video Square"
+    Else
+        MsgBox "Multiple VideoSquare command shapes on this slide.  Only 1 is allowed per a slide. Curent shapes: " + strShpNames + vbNewLine + vbNewLine + "Please delete some VideoSquares.", Title:="Type of Video Square"
+    End If
+End Sub
+
+Function ArrayOfShapesOnSlide() As Variant
+    Dim shape As shape
+    Dim sld As slide
+    Dim i As Integer
+    Dim strShapeList As String
+    Dim foundVideoSquares
+    Dim arrNames
+    
+    arrNames = Array("videosquare*", "cameraonly", "contentonly", "novideo", "sidebyside*", "prominent*", "stopimmersiveshare", "stopcontentshare", "speakertrackdiagnostic*", "previous*")
+    foundVideoSquares = False
+
+    Set sld = Application.ActiveWindow.View.slide
+    
+    For Each shape In sld.Shapes
+        For i = LBound(arrNames) To UBound(arrNames)
+            If Trim(LCase(shape.Name)) Like arrNames(i) Then
+                strShapeList = strShapeList + Trim(shape.Name) + ";"
+            End If
+        Next
+    Next shape
+    
+    If (Len(strShapeList) > 0) Then ' Remove trailing semi-colon;
+        strShapeList = Left(strShapeList, Len(strShapeList) - 1)
+    End If
+    
+    ' Return ArrayOfShapesOnSlide
+    ArrayOfShapesOnSlide = Split(strShapeList, ";")
+End Function
+
+
+Private Sub InsertRectangle(ByVal shpName As String, Optional ByVal shpText As String = "")
+    Dim slideWidth, slideHeight As Double
+    Dim shpWidth, shpHeight, shpLeft, shpTop, shpScale As Integer
+    Dim oSh As shape
+    
+    ' Insert the shape in the center of the screen at specified scale:
+    shpScale = 50 ' Percent of height and width slide will be on screen
+    
+    slideWidth = CDbl(ActivePresentation.PageSetup.slideWidth)
+    slideHeight = CDbl(ActivePresentation.PageSetup.slideHeight)
+    
+    shpWidth = CInt(slideWidth * shpScale / 100)
+    shpHeight = CInt(shpWidth * 9 / 16) ' Make sure it is a 16:9 rectangle.
+    
+    shpLeft = CInt((slideWidth - shpWidth) / 2)
+    shpTop = CInt((slideHeight - shpHeight) / 2)
+    
+    Set oSh = ActiveWindow.Selection.SlideRange.Shapes.AddShape(msoShapeRectangle, shpLeft, shpTop, shpWidth, shpHeight)
+
+    With oSh
+    .Name = shpName
+    .LockAspectRatio = msoTrue
+        With .TextFrame.TextRange
+            .Text = shpText
+            With .Font
+               ' .Name = "Arial"
+               ' .Size = 18
+                .Bold = msoFalse
+                .Italic = msoFalse
+                .Underline = msoFalse
+                .Shadow = msoFalse
+                .Emboss = msoFalse
+                .BaselineOffset = 0
+                .AutoRotateNumbers = msoFalse
+              '  .Color.SchemeColor = ppForeground
+            End With   ' Font
+        End With   ' TextRange
+    End With   ' oSh, the shape itself
+End Sub
+
+Sub InsertRectangleOffScreen(ByVal shpName As String, Optional ByVal shpText As String = "")
+    Dim slideWidth, slideHeight As Double
+    Dim shpWidth, shpHeight, shpLeft, shpTop, shpScale As Integer
+    Dim oSh As shape
+    
+    ' Insert the shape in the center of the screen at specified scale:
+    shpScale = 35 ' Percent of width shape will compared slide width
+    
+    slideWidth = CDbl(ActivePresentation.PageSetup.slideWidth)
+    slideHeight = CDbl(ActivePresentation.PageSetup.slideHeight)
+    
+    shpWidth = CInt(slideWidth * shpScale / 100)
+    shpHeight = CInt(shpWidth * 1 / 10)
+    
+    shpLeft = CInt(slideWidth * 0.05) ' add a little buffer so the shape is fully offscreen
+    shpTop = CInt(slideHeight * 1.005)
+    
+    Set oSh = ActiveWindow.Selection.SlideRange.Shapes.AddShape(msoShapeRoundedRectangle, shpLeft, shpTop, shpWidth, shpHeight)
+    
+    shpText = shpName
+    
+    With oSh
+    .Name = shpName
+    .LockAspectRatio = msoTrue
+    .Line.visible = msoTrue
+        With .TextFrame.TextRange
+            .Text = shpText
+            With .Font
+              '  .Name = "Arial"
+              '  .Size = 18
+                .Bold = msoFalse
+                .Italic = msoFalse
+                .Underline = msoFalse
+                .Shadow = msoFalse
+                .Emboss = msoFalse
+                .BaselineOffset = 0
+                .AutoRotateNumbers = msoFalse
+               '  .Color.SchemeColor = ppForeground
+            End With   ' Font
+        End With   ' TextRange
+    End With   ' oSh, the shape itself
+
+End Sub
