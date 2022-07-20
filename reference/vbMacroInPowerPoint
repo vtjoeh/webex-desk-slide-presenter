@@ -1,7 +1,7 @@
 ' This VB macro is found in the PowerPoint TemplateDeskProMacro_ver0.1.x.pptm, but wanted to include a copy here.  
 ' I recommend using TemplateDeskProMacro_ver0.1.x.pptm to start with instead of the below Macro
 
-' Webex Desk Slide Presenter VBA macro ver 0.1.5.3
+' Webex Desk Slide Presenter VBA macro ver 0.1.5.4(1)
 ' Author: joehughe at cisco dot com
 ' https://github.com/vtjoeh/webex-desk-slide-presenter
 
@@ -336,7 +336,7 @@ Sub InsertVideoSquare(control As IRibbonControl)
         InsertRectangle (control.Id)
     ElseIf shpNumber = 0 Then ' 1 VideoSquare on Screen.  Update the name if videosquare* or delete and recreate
         strShpNames = Trim(Join(arrayShapes))
-        If LCase(strShpNames) Like "videosquare*" Then
+        If LCase(strShpNames) Like "videosquare*" Or LCase(strShpNames) Like "videoshape*" Then
             UpdateVideoSquareName (control.Id)
         Else
             DeleteOldInsertNewSquare (control.Id)
@@ -386,7 +386,7 @@ Sub UpdateVideoSquareName(newName As String)
     Set currentSlide = Application.ActiveWindow.View.slide
     
     For Each shp In currentSlide.Shapes
-        If Trim(LCase(shp.Name)) Like "videosquare*" Then
+        If Trim(LCase(shp.Name)) Like "videosquare*" Or Trim(LCase(shp.Name)) Like "videoshape*" Then
             shp.Name = newName
         End If
     Next
@@ -497,7 +497,7 @@ Function ArrayOfShapesOnSlide() As Variant
     Dim foundVideoSquares
     Dim arrNames
     
-    arrNames = Array("videosquare*", "cameraonly", "contentonly", "novideo", "sidebyside*", "prominent*", "stopimmersiveshare", "stopcontentshare", "speakertrackdiagnostic*", "previous*")
+    arrNames = Array("videosquare*", "videoshape*", "cameraonly", "contentonly", "novideo", "sidebyside*", "prominent*", "stopimmersiveshare", "stopcontentshare", "speakertrackdiagnostic*", "previous*")
     foundVideoSquares = False
 
     Set sld = Application.ActiveWindow.View.slide
