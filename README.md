@@ -21,11 +21,13 @@ Additional instructions in TemplateDeskMacro_ver0.1.x.pptm
 
 ## Video Tutorial and demo
 
-**Working on updating Tutorial for ver 0.1.5.4** 
+Basic Setup:  
+[PC Basic Setup: Webex Desk Slide Presenter (Video 1 of 2) ver 0.1.5.4](https://app.vidcast.io/share/c291aed2-193c-41bb-a4d3-bd658f9e52c3)
 
-[Webex Desk Slide Presenter: Basic Setup (video 1 of 2) ver 0.1.3](https://app.vidcast.io/share/a56eda21-4818-4dab-a2ff-9448277e7783)
+[Mac Basic Setup: Webex Desk Slide Presenter (Video 1 of 2) ver 0.1.5.4](https://app.vidcast.io/share/02894b1e-06a6-4484-93f4-dd86ed636043) 
 
-[Webex Desk Slide Presenter: Advanced Features (video 2 of 2) 0.1.3](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
+Advanced Features PC & Mac users:  
+[Webex Desk Slide Presenter: Advanced Features (video 2 of 2) ver 0.1.3](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
 
 ## Does not work with the "webex-presenter-desk-pro" macro
 
