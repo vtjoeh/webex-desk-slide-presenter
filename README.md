@@ -26,7 +26,7 @@ Basic Setup:
 
 [Mac Basic Setup: Webex Desk Slide Presenter (Video 1 of 2) ver 0.1.5.4](https://app.vidcast.io/share/02894b1e-06a6-4484-93f4-dd86ed636043) 
 
-Advanced Features PC & Mac users (need to update for ver 0.1.5.x features]:  
+Advanced Features PC & Mac users (need to update for ver 0.1.5.x features):  
 [Webex Desk Slide Presenter: Advanced Features (video 2 of 2) ver 0.1.3](https://app.vidcast.io/share/e5bff32f-52fd-4977-91f9-23d9bd83e803)
 
 ## Does not work with the "webex-presenter-desk-pro" macro
