@@ -11,11 +11,11 @@ Demo video on [vidcast](https://app.vidcast.io/share/1ca0edeb-4bb6-4e7e-af7a-b49
 ## Requirement for Webex Desk Slide Presenter:
 
 - A Webex Desk Pro, Webex Desk or Webex Desk Mini
-- Local admin access to the Webex Desk
-- Add local user account on the Webex Desk with **RoomControl** permissions
+  - Local admin access to the Webex Desk
+  - Add local user account on the Webex Desk with **RoomControl** permissions
 - Install the WebexDeskSlidePresenter.js Javascript macro on the Webex Desk device
 - Download the VB PowerPoint macro TemplateDeskMacro_ver0.1.x.pptm 
-- Webex Desk needs to be reachable over the network from your PC or Mac 
+  - Webex Desk needs to be reachable over the network from your PC or Mac 
 
 Additional instructions in TemplateDeskMacro_ver0.1.x.pptm
 
