@@ -1,4 +1,4 @@
 {
-  'TemplateDeskProMacro_verX.pptm' : '0.1.5.4',
-  'WebexDeskSlidePresenter.js' : '0.1.5.4'
+  'TemplateDeskProMacro_verX.pptm' : '0.1.5.5',
+  'WebexDeskSlidePresenter.js' : '0.1.5.5'
 }
