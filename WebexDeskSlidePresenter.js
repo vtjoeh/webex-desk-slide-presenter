@@ -1,21 +1,23 @@
 /*
-WebexDeskSlidePresenter.js ver 0.1.5.4 for the Webex Desk Pro, Desk and Desk Mini
+WebexDeskSlidePresenter.js ver 0.1.5.5 for the Webex Desk Pro, Desk and Desk Mini
 
 Purpose: Use PowerPoint and Webex Desk Immersive Share to superimpose your image at a predefined location in a PowerPoint slide.  
 This macro requires the PowerPoint run a VB macro that communicates with the endpoint.    
 
-Author:  Joe Hughes - joehughe at cisco dot com
+Author:  Joe Hughes
+let contact =  'joehughe' + '@' + 'cisco' + '.com'
 Signficant contributions by: Dirk-Jan Uittenbogaard
 
-See GitHub site for more details and for the PowerPoint VB macro: https://github.com/vtjoeh/webex-desk-slide-presenter
-
+See GitHub site for more details and for the PowerPoint VBA macro: https://github.com/vtjoeh/webex-desk-slide-presenter
 No warranty implied or otherwise.  
   
 */
 
 import xapi from 'xapi';
 
-const version = '0.1.5.4';
+const version = '0.1.5.5';
+
+const debugOn = false;  // true or false.  Default: false - Writes debug information to the console. 
 
 const checkUpdates = {};
 
@@ -31,9 +33,7 @@ checkUpdates.timerInterval = 30; // minutes. Default: 30 min. setTimeout value t
 
 checkUpdates.lastCheckTime = 60 * 25; // last time the update was checked listed as Minute of the Day.   Default is 25 hours.  Value is reset when checked. 
 
-const debugOn = false;  // true or false.  Default: false - Writes debug information to the console. 
-
-const fixScreenUri = 'fixscreen@example.com'  // URI to call to reset the screen of the device.  
+const fixScreenUri = 'fixscreen@example.com'  // URI to call to reset the screen settings of the device.  Only immersive share and camera settings are reset.  
 
 let vidcastSelfview = {};
 
@@ -84,6 +84,10 @@ state.usbc.signal = 'Unknown'; // 'OK' / 'NotFound'. 'Unknown' until updated.
 state.usbc.sourceId = 2; // typically 2.  Value should not change
 
 state.lastCommand // last command received from the PowerPoint
+
+state.lastFeedbackId;
+
+state.allowMuteMainVideo = true; // 'true' or 'false'.  Should start as 'true'.  PowerPoint can override this setting. Corresponds to 'Main Video Stream: Mirror/Mute' in PPT user settings
 
 state.lastBackground = { image: defaultBackground.Image, mode: defaultBackground.Mode };
 
@@ -167,7 +171,7 @@ function resetToDefault() {
 function virtualBackground(foreground, mode = state.backgroundModePc) {
   logFuncName("virtualBackground")
   turnSpeakerTrackDiagOff();
-  xapi.Command.Video.Input.MainVideo.Mute();
+  if (state.allowMuteMainVideo) {xapi.Command.Video.Input.MainVideo.Mute() };
   if (state.slideImmersiveShare === 'Off') {
     // Adding some delay bfore making the switch 
     setTimeout(() => {
@@ -252,8 +256,18 @@ function presentationEqual(text) {
 
 function powerPointCommand(pptCmd) {
   logFuncName('powerPointCommand()' + JSON.stringify(pptCmd) + "  ");
-
+ 
   state.lastCommand = pptCmd.Text
+  state.lastFeedbackId = pptCmd.FeedbackId; 
+
+  if (pptCmd.FeedbackId === 'pptVideoSquareDual'){  // Send as Dual streams for dual stream devices 
+    pptCmd.FeedbackId = 'pptVideoSquare'; 
+    state.allowMuteMainVideo = false; 
+  } 
+  else if (pptCmd.FeedbackId === 'pptVideoSquare'){
+    state.allowMuteMainVideo = true; 
+  }
+
   // Only accept a command if a presenation is already being sent while in a call
   if ((pptCmd.FeedbackId === 'pptVideoSquare' && state.presentationMode === 'Sending') || pptCmd.FeedbackId === 'pptVideoSquare2') {
     if (pptCmd.Text === 'pptImmersiveShareOff' || pptCmd.Text === 'pptImmersiveSlideShowEnd') {
@@ -275,7 +289,7 @@ function powerPointCommand(pptCmd) {
     else if (pptCmd.Text === 'pptImmersiveCameraOnly') {
       selectDefaultBackground();
       let location = { X: '5000', Y: '5000', Scale: '100', Opacity: '100', Composition: 'VideoPip' };
-      virtualBackground(location, defaultBackground);
+      virtualBackground(location, "Image");
       state.cameraOnlyAsContent = 'On';
     }
     else if (pptCmd.Text === 'pptImmersiveStopContentShare') {
@@ -295,7 +309,7 @@ function powerPointCommand(pptCmd) {
       state.speakerTrackDiag = 'On';
       state.slideImmersiveShare = 'On';
       xapi.Command.Cameras.SpeakerTrack.Diagnostics.Start();
-      xapi.Command.Video.Input.MainVideo.Mute();
+      if (state.allowMuteMainVideo) {xapi.Command.Video.Input.MainVideo.Mute() };
       xapi.Command.Presentation.Start({ ConnectorId: mainCam });
       consoleState();
     }
@@ -309,7 +323,7 @@ function powerPointCommand(pptCmd) {
       virtualBackground(parseCommand(pptCmd.Text));
     }
   }
-  else if (pptCmd.FeedbackId === 'pptVideoSquare' && state.activeCalls == '1' && (state.presentationMode === 'Off' || state.presentationMode === 'Receiving')) {
+  else if ((pptCmd.FeedbackId === 'pptVideoSquare' || pptCmd.FeedbackId === 'pptVideoSquareDual') && state.activeCalls == '1' && (state.presentationMode === 'Off' || state.presentationMode === 'Receiving')) {
     const regex = /(X:\d+,Y:\d+,Scale:\d+,Opacity:\d+,Composition:.+)|pptImmersive(Speak|Prom|3vid|Equa|Came).*/
     if (regex.test(pptCmd.Text)) {
       openPromptDisplay(pptCmd.Text);
@@ -548,14 +562,11 @@ function turnOnTimerUpdateCheck() {
   // console.log('checkMinuteOfDayStart', checkMinuteOfDayStart, 'currentMinuteOfDay', currentMinuteOfDay, "checkMinuteOfDayEnd", checkMinuteOfDayEnd, 'checkUpdates.lastCheckTime', checkUpdates.lastCheckTime, 'checkUpdates.window', checkUpdates.window);
 
   if (checkMinuteOfDayStart < currentMinuteOfDay && currentMinuteOfDay < checkMinuteOfDayEnd && currentMinuteOfDay < checkUpdates.lastCheckTime) {
-  //   console.log('do checkupdate');
     checkUpdates.lastCheckTime = currentMinuteOfDay;
     doCheckUpdate();
   }
-  else {
-  //  console.log('no need for checkupdate');
-  }
-  setTimeout(turnOnTimerUpdateCheck, checkUpdates.timerInterval * 60 * 1000 ); 
+
+  setTimeout(turnOnTimerUpdateCheck, checkUpdates.timerInterval * 60 * 1000);
 }
 
 // If a Prompt Command with FeedbackId X:<100>Y:<1000>Scale:<1000>Opacity:  and Option 1 (OK) is received, then send the last command.  
@@ -606,6 +617,7 @@ function updateEventPresentationLocalSource(localSource) {
 }
 
 function updatePresentationLocalSource(event) {
+  console.log("updatePresentationLocalSource: event", event); 
   logFuncName('updatePresentationLocalSource')
   if (!Array.isArray(event)) {
     event = [event];
@@ -659,6 +671,68 @@ function updateVirtualBackgroundState(event) {
   consoleState();
 }
 
+// Takes input from a standard PowerPoint clicker. 
+//  Web Interface:  Settings --> Configuration --> Peripherals --> InputDevice Mode: On
+
+let keyState = {};
+
+keyState.KEY_LEFTALT = 'Released';
+
+function usbKeyInput(keyAction) {
+
+  let pptCmd = {};
+  if(state.lastFeedbackId){
+    pptCmd.FeedbackId = state.lastFeedbackId; 
+  }
+  else {
+    pptCmd.FeedbackId = 'pptVideoSquare';
+  }
+  
+  if (keyAction.Type === 'Released' && keyAction.Key === 'KEY_LEFTALT') {
+    keyState.KEY_LEFTALT = 'Released';
+  }
+
+  if (keyAction.Type === 'Pressed') {
+    if (keyAction.Key == 'KEY_RIGHT' || keyAction.Key == 'KEY_DOWN' || keyAction.Key == 'KEY_PAGEDOWN') {
+      pptCmd.Text = 'X:8000,Y:8000,Scale:40,Opacity:100,Composition:Blend';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_LEFT' || keyAction.Key == 'KEY_UP' || keyAction.Key == 'KEY_PAGEUP') {
+      pptCmd.Text = 'X:2000,Y:8000,Scale:40,Opacity:100,Composition:Blend';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_VOLUMEUP') {
+      pptCmd.Text = 'X:2000,Y:2000,Scale:40,Opacity:100,Composition:Blend';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_VOLUMEDOWN') {
+      pptCmd.Text = 'X:8000,Y:2000,Scale:40,Opacity:100,Composition:Blend';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_ENTER' || keyAction.Key == 'KEY_B') {
+      pptCmd.Text = 'pptImmersiveSlideShowEnd';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_TAB' && keyState.KEY_LEFTALT == 'Released') {  
+      pptCmd.Text = 'X:200,Y:200,Scale:1,Opacity:1,Composition:Blend';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_TAB' && keyState.KEY_LEFTALT == 'Pressed') {
+      state.slideImmersiveShare = 'On';  // temporarily change state to state.slideImmersiveShare = 'On' even though it may not be true. 
+      pptCmd.Text = 'pptImmersiveStopContentShare';
+      powerPointCommand(pptCmd);
+    }
+    else if (keyAction.Key == 'KEY_ESC' || keyAction.Key == 'KEY_S') {
+      // 
+    }
+    else if (keyAction.Key == 'KEY_LEFTALT') {
+      keyState.KEY_LEFTALT = 'Pressed';
+    }
+  }
+}
+
+
+
 setTimeout(turnOnTimerUpdateCheck, 7000);
 
 turnOnHttpClient();
@@ -696,3 +770,5 @@ xapi.Event.UserInterface.Message.TextInput.Response.on(powerPointCommand);
 xapi.Event.UserInterface.Message.Prompt.Response.on(promptCommand);
 
 xapi.Event.CallDisconnect.DisplayName.on(resetScreen);
+
+xapi.Event.UserInterface.InputDevice.Key.Action.on(usbKeyInput); 
