@@ -19,7 +19,7 @@ Demo video on [vidcast](https://app.vidcast.io/share/1ca0edeb-4bb6-4e7e-af7a-b49
 
 Additional instructions in TemplateDeskMacro_ver0.1.x.pptm
 
-## Video Tutorial and demo
+## Video Tutorial 
 
 Basic Setup:  
 [PC Basic Setup: Webex Desk Slide Presenter (Video 1 of 2) ver 0.1.5.4](https://app.vidcast.io/share/c291aed2-193c-41bb-a4d3-bd658f9e52c3)
