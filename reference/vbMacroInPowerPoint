@@ -1,16 +1,18 @@
 ' This VB macro is found in the PowerPoint TemplateDeskProMacro_ver0.1.x.pptm, but wanted to include a copy here.  
 ' I recommend using TemplateDeskProMacro_ver0.1.x.pptm to start with instead of the below Macro
 
-' Webex Desk Slide Presenter VBA macro ver 0.1.5.4(1)
-' Author: joehughe at cisco dot com
+' Webex Desk Slide Presenter VBA macro ver 0.1.5.5
+' Author = "joehughe" + "@" + "cisco" + ".com"
 ' https://github.com/vtjoeh/webex-desk-slide-presenter
 
 Public rib As IRibbonUI
 
 Private Sub SendCommand(command As String)
-    Dim curlString, username, password, ipaddress, body, lastCommand As String
+    Dim curlString, username, password, ipaddress, body, lastCommand, feedbackId As String
     
     lastCommand = GetTag("LASTCOMMAND")
+    
+    feedbackId = GetMainVideoStreamDual          ' feedbackId = 'pptVideoSquare' or feedbacakId 'pptVideoSquareDual'.  pptVideoSquareDual mirrors the main channel and content channel
 
     If Not (lastCommand = command) Then
         username = Trim(GetShapeTextValue("setting_user"))
@@ -34,11 +36,10 @@ Private Sub SendCommand(command As String)
     
         password = Replace(password, """", "\""")
         
-        body = "<Command><UserInterface><Message><TextInput><Response><FeedbackId>pptVideoSquare</FeedbackId><Text>" + command + "</Text></Response></TextInput></Message></UserInterface></Command>"
+        body = "<Command><UserInterface><Message><TextInput><Response><FeedbackId>" + feedbackId + "</FeedbackId><Text>" + command + "</Text></Response></TextInput></Message></UserInterface></Command>"
 
         curlString = "curl -k -d """ + body + """ https://" + ipaddress + "/putxml -u """ + username + ":" + password + """"
 
-        ' Debug.Print (curlString)
         Debug.Print (GetTime + " Command: " + command)
         StoreTag "LASTCOMMAND", (command)
         
@@ -46,6 +47,20 @@ Private Sub SendCommand(command As String)
 
     End If
 End Sub
+
+Private Function GetMainVideoStreamDual() As String
+    Dim feedbackId, mainVideoStream As String
+    
+    mainVideoStream = Trim(LCase(GetShapeTextValue("setting_default_main_video_stream")))
+
+    If (mainVideoStream = "mirror") Then
+        feedbackId = "pptVideoSquareDual"   ' This is equal to 'Mirror'
+    Else
+        feedbackId = "pptVideoSquare"   ' This is equal to 'Mute'  the default setting
+    End If
+
+    GetMainVideoStreamDual = feedbackId
+End Function
 
 Private Sub MakePasswordTransparent()
     Dim i As Integer
@@ -151,9 +166,10 @@ Private Sub LoopThroughShapes(slideNumber)
     
     shapeFound = False
     Set currentSlide = ActivePresentation.Slides(slideNumber)
-     
+
     For Each shp In currentSlide.Shapes
         shpName = LCase(shp.Name)
+
         If shpName Like "videosquare*" Or shpName Like "videoshape*" Then
             GetShapeDetails shp
             shapeFound = True
@@ -195,7 +211,7 @@ Private Sub LoopThroughShapes(slideNumber)
             Exit For
         End If
     Next shp
-    
+
     ' If a command shape is not found determine default action
     If shapeFound = False Then
        GetDefaultSlideCommand (slideNumber)
@@ -282,7 +298,7 @@ Private Sub GetShapeDetails(shp As shape)
     shpScale = CInt(100 * ((shp.Height / slideHeight) + (shp.Width / slideWidth)) / 2)
     shapeDetails = "X:" + Trim(Str(shpX)) + ",Y:" + Trim(Str(shpY)) + ",Scale:" + Trim(Str(shpScale)) + ",Opacity:" + Trim(Str(shpOpacity)) + ",Composition:" + Trim(Composition)
     lastShapeDetails = GetTag("LASTCOMMAND")
-    
+
     SendCommand (shapeDetails)
 End Sub
 
