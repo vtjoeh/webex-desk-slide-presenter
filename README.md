@@ -29,6 +29,7 @@ Basic Setup:
 Advanced Features PC & Mac users:  
 [Webex Desk Slide Presenter: Advanced Features (video 1 of 2) ver 0.1.5.x](https://app.vidcast.io/share/bf6060c8-c5e8-44a4-a82c-ab7a384fe433)
 
+[Webex Desk Slide Presenter: More Advanced Features (video 2 of 2) ver 0.1.5.x](https://app.vidcast.io/share/7f501621-17e3-4462-96e4-7e7197f61d23)
 
 
 ## Does not work with the "webex-presenter-desk-pro" macro
@@ -38,4 +39,7 @@ If you are using the "webex-presenter-desk-pro" macro that I wrote with your Web
 ## Community Support 
 
 Please join the **Webex Desk Slide Presenter community** support Webex space by clicking: https://eurl.io/#sgWuQ2PIF.  
+
+# Release Notes 
+[Latest Release Notes](https://github.com/vtjoeh/webex-desk-slide-presenter/blob/main/ReleaseNotes.md)
 
