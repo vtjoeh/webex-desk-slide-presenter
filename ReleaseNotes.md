@@ -15,7 +15,7 @@
     - Tap 2x: StopImmersiveShare (PC and main video separate)
     - Hold down: Stop sharing any content (main cam only) 
 - **Fixed Bug** 
-  - Fixed issue if the ‘CameraOnly’ command was the first command sent might cause issues.  
+  - Fixed issue if the ‘CameraOnly’ command was the first command sent might cause issues  
 
 ### Release Notes ver 0.1.5.4
 
